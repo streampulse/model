@@ -10,8 +10,11 @@ Fitting metabolism models with streampulse follows two steps:
     - `model_type="bayes"` fits a Bayesian model (recommended)
     - `model_type="mle"` fits a maximum likelihood model
   * `model_name = "BASE"` runs [BASE](https://github.com/dgiling/BASE)
+The code for these functions is contained in three files: `sp_functions.R`, `gapfill_functions.R`, and `BASE_functions.R` (which are copied from the `dgiling` repo).
 
 # Code
+This example is also available as code in [`model_streampulse.R`](https://github.com/streampulse/model/blob/master/model_streampulse.R).
+
 ```r
 # You need to have an internet connection for this code to function.
 # REQUIRED packages
