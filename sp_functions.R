@@ -10,6 +10,7 @@
 # }
 
 alice_function <- function(){print('functions! yay!')}
+Eric_function <- function(){print('this is a change')}
 
 sp_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL, flags=FALSE, token=NULL){
     # sitecode is a site name
@@ -143,4 +144,9 @@ fit_metabolism <- function(fitdata, model="streamMetabolizer", model_type="bayes
         preds <- predict_metab(modfit)
     }
     preds
+}
+
+p_func <- function(x){
+  output <- (x * 2) - 10
+  return(output)
 }
