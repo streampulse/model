@@ -144,3 +144,8 @@ fit_metabolism <- function(fitdata, model="streamMetabolizer", model_type="bayes
     }
     preds
 }
+
+p_func <- function(x){
+  output <- (x * 2) - 10
+  return(output)
+}
