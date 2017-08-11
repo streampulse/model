@@ -34,8 +34,8 @@ sp_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL, flag
 sp_prep_metab <- function(d, model="streamMetabolizer", fillgaps=T){
   dd <- d$data
   # rename USGSDepth_m and USGSDischarge_m3s
-  if("USGSDepth_m"%in%dd$variable && !"Depth_m"%in%dd$variable){
-      dd$variable[dd$variable=="USGSDepth_m"] <- "Depth_m"
+  if("USGSLevel_m"%in%dd$variable && !"Level_m"%in%dd$variable){
+      dd$variable[dd$variable=="USGSLevel_m"] <- "Level_m"
   }
   if("USGSDischarge_m3s"%in%dd$variable && !"Discharge_m3s"%in%dd$variable){
       dd$variable[dd$variable=="USGSDischarge_m3s"] <- "Discharge_m3s"
@@ -58,13 +58,15 @@ sp_prep_metab <- function(d, model="streamMetabolizer", fillgaps=T){
       dd$light <- suppressWarnings(streamMetabolizer::calc_solar_insolation(app.solar.time=apparentsolartime, latitude=md$lat[1], format="degrees"))
   }
   if("DO_mgL"%in%vd) dd$DO.obs <- dd$DO_mgL
-  if("Depth_m"%in%vd) dd$depth <- dd$Depth_m
   if("WaterTemp_C"%in%vd) dd$temp.water <- dd$WaterTemp_C
   if("Discharge_m3s"%in%vd) dd$discharge <- dd$Discharge_m3s
+  if("Depth_m"%in%vd){
+      dd$depth <- dd$Depth_m
+  }else{ # get average depth from discharge
+      dd$depth <- calc_depth(dd$discharge)
+  }
   if("AirPres_kPa"%in%vd) dd$atmo.pressure <- dd$AirPres_kPa/101.325 # kPa to atm
   if(model=="streamMetabolizer"){
-      # get average depth from discharge
-      dd$depth <- calc_depth(dd$discharge)
       if("satDO_mgL"%in%vd){
           dd$DO.sat <- dd$satDO_mgL
       }else{
@@ -96,7 +98,7 @@ sp_data_metab <- function(sitecode, startdate=NULL, enddate=NULL, type="bayes", 
         if(as.Date(enddate)<as.Date(startdate)) stop("Start date is after end date.")
     }
     # Add: check for type, decide on what variables to include
-    variables <- c("DO_mgL","DOsat_pct","satDO_mgL","Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa","Discharge_m3s")
+    variables <- c("DO_mgL","DOsat_pct","satDO_mgL","Level_m","Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa","Discharge_m3s")
     #c("DO_mgL","satDO_mgL","Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa")
     cat("Downloading data from StreamPULSE.\n")
     d <- sp_data(sitecode, startdate, enddate, variables, FALSE, token)
