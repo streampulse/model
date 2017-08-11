@@ -11,6 +11,9 @@
 
 aaron_function <- function(){ print('this is a change') }
 
+Eric_function <- function(){print('this is a change')}
+
+
 sp_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL, flags=FALSE, token=NULL){
     # sitecode is a site name
     # startdate and enddate are YYYY-MM-DD strings, e.g., '1983-12-09'
@@ -143,4 +146,9 @@ fit_metabolism <- function(fitdata, model="streamMetabolizer", model_type="bayes
         preds <- predict_metab(modfit)
     }
     preds
+}
+
+p_func <- function(x){
+  output <- (x * 2) - 10
+  return(output)
 }
