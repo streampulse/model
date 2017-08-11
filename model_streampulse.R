@@ -28,7 +28,7 @@ model_name <- "streamMetabolizer"
 
 # Get StreamPULSE data for metabolism modeling
 fitdata <- sp_data_metab(sitecode = "NC_Eno",
-    startdate = "2016-07-01", enddate = "2017-07-01",
+    startdate = "2016-01-01", enddate = "2017-01-01",
     type = model_type, model = model_name, fillgaps = TRUE)
 
 # Fit models
