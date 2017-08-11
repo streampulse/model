@@ -11,6 +11,8 @@
 
 aaron_function <- function(){ print('this is a change') }
 
+alice_function <- function(){print('functions! yay!')}
+
 Eric_function <- function(){print('this is a change')}
 
 
