@@ -4,7 +4,7 @@ Streampulse metabolism modeling code
 # Workflow
 Fitting metabolism models with streampulse follows two steps:
 
-1. Downloading data from the streampulse platform
+1. Downloading/formatting data from the streampulse platform
 2. Fitting the chosen model
   * `model_name = "streamMetabolizer"` runs [streamMetabolizer](https://github.com/USGS-R/streamMetabolizer)
     - `model_type="bayes"` fits a Bayesian model (recommended)
