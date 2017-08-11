@@ -63,11 +63,13 @@ sp_prep_metab <- function(d, model="streamMetabolizer", fillgaps=T){
   if("Discharge_m3s"%in%vd) dd$discharge <- dd$Discharge_m3s
   if("AirPres_kPa"%in%vd) dd$atmo.pressure <- dd$AirPres_kPa/101.325 # kPa to atm
   if(model=="streamMetabolizer"){
+      # get average depth from discharge
+      dd$depth <- calc_depth(dd$discharge)
       if("satDO_mgL"%in%vd){
           dd$DO.sat <- dd$satDO_mgL
       }else{
           if("DOsat_pct"%in%vd){
-              # define multiplicative factor, to catch if variable is fraction or percent... do this on server first in future!
+              # define multiplicative factor, to catch if variable is fraction or percent... could do this on server first in future
               if(quantile(dd$DOsat_pct,0.9,na.rm=T)>10){ ff<-0.01 }else{ ff<-1 }
               dd$DO.sat <- dd$DO.obs/(dd$DOsat_pct*ff)
           }else{
@@ -127,8 +129,6 @@ fit_metabolism <- function(fitdata, model="streamMetabolizer", model_type="bayes
         fit_BASE(directory=directory, interval=900, n.iter=30000, n.burnin=15000)
         preds <- predict_BASE(directory)
     }else{
-        # get average depth from stage
-        fitdata$depth <- calc_depth(fitdata$discharge)
         # streamMetabolizer functions
         modname <- mm_name(type=model_type, pool_K600="binned",
             err_obs_iid=TRUE, err_proc_acor=FALSE, err_proc_iid=TRUE,
