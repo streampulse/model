@@ -7,7 +7,6 @@ library(jsonlite)
 library(R2jags)
 library(streamMetabolizer)
 library(tidyr)
-#library(zoo)
 
 # REQUIRED code
 # These source our StreamPULSE functions from GitHub
@@ -33,3 +32,19 @@ fitdata <- sp_data_metab(sitecode = "NC_Eno",
 
 # Fit models
 predictions <- fit_metabolism(fitdata, model_name, model_type)
+
+#basepreds <- predict_BASE(tmp)
+
+
+
+
+# streamMetabolizer comparison
+model_name <- "streamMetabolizer"
+
+# Get StreamPULSE data for metabolism modeling
+smfitdata <- sp_data_metab(sitecode = "NC_Eno",
+    startdate = "2016-01-01", enddate = "2017-07-01",
+    type = model_type, model = model_name, fillgaps = TRUE)
+
+# Fit models
+smpredictions <- fit_metabolism(smfitdata, model_name, model_type)
