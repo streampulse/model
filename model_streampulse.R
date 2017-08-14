@@ -7,7 +7,7 @@ library(jsonlite)
 library(R2jags)
 library(streamMetabolizer)
 library(tidyr)
-library(zoo)
+#library(zoo)
 
 # REQUIRED code
 # These source our StreamPULSE functions from GitHub
@@ -24,11 +24,11 @@ eval(parse(text = content(BASE_functions, as="text", encoding="UTF-8")), envir= 
 model_type <- "bayes"
 # Which modeling framework to use
 # "streamMetabolizer" is default, can also use "BASE"
-model_name <- "streamMetabolizer"
+model_name <- "BASE"
 
 # Get StreamPULSE data for metabolism modeling
 fitdata <- sp_data_metab(sitecode = "NC_Eno",
-    startdate = "2016-01-01", enddate = "2017-01-01",
+    startdate = "2016-01-01", enddate = "2017-07-01",
     type = model_type, model = model_name, fillgaps = TRUE)
 
 # Fit models
