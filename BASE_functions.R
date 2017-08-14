@@ -11,7 +11,7 @@ prep_BASE <- function(x, directory){
     x <- split(x, x$Date)
 
     # write base files
-    lapply(basedata, function(xx){
+    lapply(x, function(xx){
         if(nrow(xx)==96 && all(complete.cases(xx))){ # only full days
             date <- unique(xx$Date)
             write.csv(xx, file=paste0(directory,"/BASE/input/BASE_",date,".csv"), row.names=F)

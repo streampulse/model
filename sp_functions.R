@@ -9,11 +9,6 @@
 #   return(x)
 # }
 
-#this is a comment
-aaron_function <- function(){ print('this is a change') }
-alice_function <- function(){print('functions! yay!')}
-Eric_function <- function(){print('this is a change')}
-
 sp_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL, flags=FALSE, token=NULL){
     # sitecode is a site name
     # startdate and enddate are YYYY-MM-DD strings, e.g., '1983-12-09'
@@ -37,58 +32,59 @@ sp_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL, flag
 }
 
 sp_prep_metab <- function(d, model="streamMetabolizer", fillgaps=T){
-  dd <- d$data
-  # rename USGSDepth_m and USGSDischarge_m3s
-  if("USGSLevel_m"%in%dd$variable && !"Level_m"%in%dd$variable){
-      dd$variable[dd$variable=="USGSLevel_m"] <- "Level_m"
-  }
-  if("USGSDischarge_m3s"%in%dd$variable && !"Discharge_m3s"%in%dd$variable){
-      dd$variable[dd$variable=="USGSDischarge_m3s"] <- "Discharge_m3s"
-  }
-  vd <- unique(dd$variable)
-  dd <- tidyr::spread(dd, variable, value) # need to reshape...
-  # check if sufficient data
-  md <- d$sites # metadata
-  # force into 15 minute intervals
-  alldates <- data.frame(DateTime_UTC=seq(dd[1,1],dd[nrow(dd),1],by="15 min"))
-  dd <- full_join(alldates,dd, by="DateTime_UTC")
-  # calculate/define model variables
-  dd$solar.time <- suppressWarnings(streamMetabolizer::convert_UTC_to_solartime(date.time=dd$DateTime_UTC, longitude=md$lon[1], time.type="mean solar"))
-  #if(fillgaps) dd <- gap_fill(dd)
-  if("Light_PAR"%in%vd){
-      dd$light <- dd$Light_PAR
-  }else{
-      apparentsolartime <- suppressWarnings(streamMetabolizer::convert_UTC_to_solartime(date.time=dd$DateTime_UTC, longitude=md$lon[1], time.type="apparent solar"))
-      cat("NOTE: Modeling PAR based on location and date.\n")
-      dd$light <- suppressWarnings(streamMetabolizer::calc_solar_insolation(app.solar.time=apparentsolartime, latitude=md$lat[1], format="degrees"))
-  }
-  if("DO_mgL"%in%vd) dd$DO.obs <- dd$DO_mgL
-  if("WaterTemp_C"%in%vd) dd$temp.water <- dd$WaterTemp_C
-  if("Discharge_m3s"%in%vd) dd$discharge <- dd$Discharge_m3s
-  if("Depth_m"%in%vd){
-      dd$depth <- dd$Depth_m
-  }else{ # get average depth from discharge
-      dd$depth <- calc_depth(dd$discharge)
-  }
-  if("AirPres_kPa"%in%vd) dd$atmo.pressure <- dd$AirPres_kPa/101.325 # kPa to atm
-  if(model=="streamMetabolizer"){
-      if("satDO_mgL"%in%vd){
-          dd$DO.sat <- dd$satDO_mgL
-      }else{
-          if("DOsat_pct"%in%vd){
-              # define multiplicative factor, to catch if variable is fraction or percent... could do this on server first in future
-              if(quantile(dd$DOsat_pct,0.9,na.rm=T)>10){ ff<-0.01 }else{ ff<-1 }
-              dd$DO.sat <- dd$DO.obs/(dd$DOsat_pct*ff)
-          }else{
-              if(!all(c("temp.water","AirPres_kPa")%in%colnames(dd))){
-                stop("Insufficient data to fit this model.")
-              }
-              cat("NOTE: Modeling DO.sat based on water temperature and air pressure.\n")
-              dd$DO.sat <- LakeMetabolizer::o2.at.sat.base(temp = dd$temp.water, baro = dd$AirPres_kPa*10, salinity = 0, model = 'garcia-benson')
-          }
-      }
-  }
-  return(dd)
+    dd <- d$data
+    # rename USGSDepth_m and USGSDischarge_m3s
+    if("USGSLevel_m"%in%dd$variable && !"Level_m"%in%dd$variable){
+        dd$variable[dd$variable=="USGSLevel_m"] <- "Level_m"
+    }
+    if("USGSDischarge_m3s"%in%dd$variable && !"Discharge_m3s"%in%dd$variable){
+        dd$variable[dd$variable=="USGSDischarge_m3s"] <- "Discharge_m3s"
+    }
+    vd <- unique(dd$variable)
+    dd <- tidyr::spread(dd, variable, value) # need to reshape...
+    # check if sufficient data
+    md <- d$sites # metadata
+    # force into 15 minute intervals
+    alldates <- data.frame(DateTime_UTC=seq(dd[1,1],dd[nrow(dd),1],by="15 min"))
+    dd <- full_join(alldates,dd, by="DateTime_UTC")
+    # calculate/define model variables
+    dd$solar.time <- suppressWarnings(streamMetabolizer::convert_UTC_to_solartime(date.time=dd$DateTime_UTC, longitude=md$lon[1], time.type="mean solar"))
+    # estimate par
+    apparentsolartime <- suppressWarnings(streamMetabolizer::convert_UTC_to_solartime(date.time=dd$DateTime_UTC, longitude=md$lon[1], time.type="apparent solar"))
+    cat("NOTE: Modeling PAR based on location and date.\n")
+    dd$light <- suppressWarnings(streamMetabolizer::calc_solar_insolation(app.solar.time=apparentsolartime, latitude=md$lat[1], format="degrees"))
+    if("Light_PAR"%in%vd){ # fill in with observations
+        dd$light[!is.na(dd$Light_PAR)] <- dd$Light_PAR[!is.na(dd$Light_PAR)]
+    }
+    # GAP FILLING
+    if(fillgaps) dd <- gap_fill(dd)
+    if("DO_mgL"%in%vd) dd$DO.obs <- dd$DO_mgL
+    if("WaterTemp_C"%in%vd) dd$temp.water <- dd$WaterTemp_C
+    if("Discharge_m3s"%in%vd) dd$discharge <- dd$Discharge_m3s
+    if("Depth_m"%in%vd){
+        dd$depth <- dd$Depth_m
+    }else{ # get average depth from discharge
+        dd$depth <- calc_depth(dd$discharge)
+    }
+    if("AirPres_kPa"%in%vd) dd$atmo.pressure <- dd$AirPres_kPa/101.325 # kPa to atm
+    if(model=="streamMetabolizer"){
+        if("satDO_mgL"%in%vd){
+            dd$DO.sat <- dd$satDO_mgL
+        }else{
+            if("DOsat_pct"%in%vd){
+                # define multiplicative factor, to catch if variable is fraction or percent... could do this on server first in future
+                if(quantile(dd$DOsat_pct,0.9,na.rm=T)>10){ ff<-0.01 }else{ ff<-1 }
+                dd$DO.sat <- dd$DO.obs/(dd$DOsat_pct*ff)
+            }else{
+                if(!all(c("temp.water","AirPres_kPa")%in%colnames(dd))){
+                  stop("Insufficient data to fit this model.")
+                }
+                cat("NOTE: Modeling DO.sat based on water temperature and air pressure.\n")
+                dd$DO.sat <- LakeMetabolizer::o2.at.sat.base(temp = dd$temp.water, baro = dd$AirPres_kPa*10, salinity = 0, model = 'garcia-benson')
+            }
+        }
+    }
+    return(dd)
 }
 
 sp_data_metab <- function(sitecode, startdate=NULL, enddate=NULL, type="bayes", model="streamMetabolizer", fillgaps=TRUE, token=NULL){
@@ -127,14 +123,27 @@ sp_data_metab <- function(sitecode, startdate=NULL, enddate=NULL, type="bayes", 
 fit_metabolism <- function(fitdata, model="streamMetabolizer", model_type="bayes"){
     # alternative, model="BASE"
     if(model=="BASE"){
-        basedir <- "/home/aaron/Downloads/BASE-master/"
         tmp <- tempdir() # the temp dir for the data and model
         if(!dir.exists(tmp)) dir.create(tmp) # create if does not exist
-        file.copy(from=basedir, to=tmp, recursive=T) # copy BASE files to tempdir
-        directory <- file.path(tmp,"BASE-master/")  # example
-        prep_BASE(fitdata, directory)
-        fit_BASE(directory=directory, interval=900, n.iter=30000, n.burnin=15000)
-        preds <- predict_BASE(directory)
+        # create BASE directory
+        if(!dir.exists(file.path(tmp,"BASE"))){
+          dir.create(file.path(tmp,"BASE"))
+          # add input folder
+          dir.create(file.path(tmp,"BASE","input"))
+          # add output folder
+          dir.create(file.path(tmp,"BASE","output"))
+          # - add instantaneous rates folder
+          dir.create(file.path(tmp,"BASE","output","instantaneous rates"))
+          # - add validation plots folder
+          dir.create(file.path(tmp,"BASE","output","validation plots"))
+        }
+        # add BASE_metab_model_v2.2.txt
+        download.file("https://raw.githubusercontent.com/streampulse/BASE/master/BASE/BASE_metab_model_v2.2.txt",
+            file.path(tmp,"BASE","BASE_metab_model_v2.2.txt"))
+        # directory <- file.path(tmp,"BASE-master/")  # example
+        prep_BASE(fitdata, tmp)
+        fit_BASE(directory=tmp, interval=900, n.iter=30000, n.burnin=15000)
+        preds <- predict_BASE(tmp)
     }else{
         # streamMetabolizer functions
         modname <- mm_name(type=model_type, pool_K600="binned",
@@ -146,9 +155,4 @@ fit_metabolism <- function(fitdata, model="streamMetabolizer", model_type="bayes
         preds <- predict_metab(modfit)
     }
     preds
-}
-
-p_func <- function(x){
-  output <- (x * 2) - 10
-  return(output)
 }
