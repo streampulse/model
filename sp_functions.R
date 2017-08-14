@@ -1,15 +1,14 @@
-# na_fill <- function(x, tol){
-#   # x is a vector of data
-#   # tol is max number of steps missing (if greater, it retains NA)
-#   ina = is.na(x)
-#   csum = cumsum(!ina)
-#   wg = as.numeric(names(which(table(csum) > tol))) # which gaps are too long
-#   x[ina] = approx(x, xout=which(ina))$y
-#   x[which(csum%in%wg)[-1]] = NA
-#   return(x)
-# }
+# Source gapfilling functions
+gapfill_functions <- GET("https://raw.githubusercontent.com/streampulse/model/master/gapfill_functions.R")
+eval(parse(text = content(gapfill_functions, as="text", encoding="UTF-8")), envir= .GlobalEnv)
+
+# Source BASE functions
+BASE_functions <- GET("https://raw.githubusercontent.com/streampulse/model/master/BASE_functions.R")
+eval(parse(text = content(BASE_functions, as="text", encoding="UTF-8")), envir= .GlobalEnv)
 
 sp_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL, flags=FALSE, token=NULL){
+    # Download data from the streampulse platform
+
     # sitecode is a site name
     # startdate and enddate are YYYY-MM-DD strings, e.g., '1983-12-09'
     # variables is a vector of c('variable_one', ..., 'variable_n')
@@ -31,22 +30,42 @@ sp_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL, flag
     return(d)
 }
 
-sp_prep_metab <- function(d, model="streamMetabolizer", fillgaps=T){
+prep_metabolism <- function(sitecode, startdate=NULL, enddate=NULL, model="streamMetabolizer", type="bayes", fillgaps=TRUE, token=NULL){
+    #### Download and prepare data for metabolism modeling
+
+    # sitecode is a site name
+    # startdate and enddate are strings "2016-12-11"
+    # type is one of "bayes" or "mle"
+    # model is one of "streamMetabolizer" or "BASE"
+
+    # Basic checks
+    if(model=="BASE") type="bayes"
+    if(length(sitecode)>1) stop("Please only enter one site to model.")
+    if(is.null(startdate)&is.null(enddate)){
+        if(as.Date(enddate)<as.Date(startdate)) stop("Start date is after end date.")
+    }
+    variables <- c("DO_mgL","DOsat_pct","satDO_mgL","Level_m","Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa","Discharge_m3s")
+
+    #### Download data from streampulse
+    cat("Downloading data from StreamPULSE.\n")
+    d <- sp_data(sitecode, startdate, enddate, variables, FALSE, token)
+
+    #### Format data for models
+    cat(paste("Formatting data for ",model,".\n", sep=""))
     dd <- d$data
-    # rename USGSDepth_m and USGSDischarge_m3s
+    # Use USGS level and discharge if missing local versions
     if("USGSLevel_m"%in%dd$variable && !"Level_m"%in%dd$variable){
         dd$variable[dd$variable=="USGSLevel_m"] <- "Level_m"
     }
     if("USGSDischarge_m3s"%in%dd$variable && !"Discharge_m3s"%in%dd$variable){
         dd$variable[dd$variable=="USGSDischarge_m3s"] <- "Discharge_m3s"
     }
-    vd <- unique(dd$variable)
-    dd <- tidyr::spread(dd, variable, value) # need to reshape...
-    # check if sufficient data
+    vd <- unique(dd$variable) # variables
+    dd <- tidyr::spread(dd, variable, value) # spread out data
     md <- d$sites # metadata
     # force into 15 minute intervals
     alldates <- data.frame(DateTime_UTC=seq(dd[1,1],dd[nrow(dd),1],by="15 min"))
-    dd <- full_join(alldates,dd, by="DateTime_UTC")
+    dd <- full_join(alldates, dd, by="DateTime_UTC")
     # calculate/define model variables
     dd$solar.time <- suppressWarnings(streamMetabolizer::convert_UTC_to_solartime(date.time=dd$DateTime_UTC, longitude=md$lon[1], time.type="mean solar"))
     # estimate par
@@ -56,8 +75,12 @@ sp_prep_metab <- function(d, model="streamMetabolizer", fillgaps=T){
     if("Light_PAR"%in%vd){ # fill in with observations
         dd$light[!is.na(dd$Light_PAR)] <- dd$Light_PAR[!is.na(dd$Light_PAR)]
     }
-    # GAP FILLING
-    if(fillgaps) dd <- gap_fill(dd)
+
+    #### Gap filling, specify maximum number of days to span
+    # found in gapfill_functions.R
+    if(fillgaps) dd <- gap_fill(dd, maxspan_days=5)
+
+    # Rename variables
     if("DO_mgL"%in%vd) dd$DO.obs <- dd$DO_mgL
     if("WaterTemp_C"%in%vd) dd$temp.water <- dd$WaterTemp_C
     if("Discharge_m3s"%in%vd) dd$discharge <- dd$Discharge_m3s
@@ -77,34 +100,15 @@ sp_prep_metab <- function(d, model="streamMetabolizer", fillgaps=T){
                 dd$DO.sat <- dd$DO.obs/(dd$DOsat_pct*ff)
             }else{
                 if(!all(c("temp.water","AirPres_kPa")%in%colnames(dd))){
-                  stop("Insufficient data to fit this model.")
+                    stop("Insufficient data to fit this model.")
                 }
                 cat("NOTE: Modeling DO.sat based on water temperature and air pressure.\n")
                 dd$DO.sat <- LakeMetabolizer::o2.at.sat.base(temp = dd$temp.water, baro = dd$AirPres_kPa*10, salinity = 0, model = 'garcia-benson')
             }
         }
     }
-    return(dd)
-}
 
-sp_data_metab <- function(sitecode, startdate=NULL, enddate=NULL, type="bayes", model="streamMetabolizer", fillgaps=TRUE, token=NULL){
-    # return data for streamMetabolizer metab()
-    # sitecode is a site name
-    # startdate and enddate are strings "2016-12-11"
-    # type is one of "bayes" or "mle"
-    # model is one of "streamMetabolizer" or "BASE"
-    if(model=="BASE") type="bayes"
-    if(length(sitecode)>1) stop("Please only enter one site to model.")
-    if(is.null(startdate)&is.null(enddate)){
-        if(as.Date(enddate)<as.Date(startdate)) stop("Start date is after end date.")
-    }
-    # Add: check for type, decide on what variables to include
-    variables <- c("DO_mgL","DOsat_pct","satDO_mgL","Level_m","Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa","Discharge_m3s")
-    #c("DO_mgL","satDO_mgL","Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa")
-    cat("Downloading data from StreamPULSE.\n")
-    d <- sp_data(sitecode, startdate, enddate, variables, FALSE, token)
-    cat(paste("Formatting data for ",model,".\n", sep=""))
-    dd <- sp_prep_metab(d, model, fillgaps)
+    # Select variables for model
     if(model=="BASE"){
       model_variables <- c("solar.time","DO.obs","temp.water","light","atmo.pressure")
     }else{ # streamMetabolizer
@@ -114,45 +118,80 @@ sp_data_metab <- function(sitecode, startdate=NULL, enddate=NULL, type="bayes", 
     if(!all(model_variables%in%colnames(dd))){
         stop("Insufficient data to fit this model.")
     }
-    fitdata <- dplyr::select_(dd, .dots=model_variables)
-    # gap fill linearly if less than 3h
-    #fitdata = data.frame(solar.time=fitdata[,1],apply(fitdata[,2:ncol(fitdata)],2,na_fill,tol=12))
-    return(fitdata)
+
+    # Structure data, add class for model name
+    if(model=="BASE"){ # rename variables for BASE
+        fitdata <- dd %>% select_(.dots=model_variables) %>%
+            mutate(Date=as.Date(solar.time),Time=strftime(solar.time,format="%H:%M:%S"), salinity=0) %>%
+            rename(I=light, tempC=temp.water, DO.meas=DO.obs) %>%
+            select(Date, Time, I, tempC, DO.meas, atmo.pressure, salinity)
+        BASE <- setClass("BASE", contains="data.frame")
+        outdata <- as(fitdata, "BASE")
+    }else if(model=="streamMetabolizer"){
+        fitdata <- dplyr::select_(dd, .dots=model_variables)
+        streamMetabolizer <- setClass("streamMetabolizer", representation(type="character"), contains="data.frame")
+        outdata <- as(fitdata, "streamMetabolizer")
+        outdata@type <- type
+    }
+    outdata
 }
 
-fit_metabolism <- function(fitdata, model="streamMetabolizer", model_type="bayes"){
-    # alternative, model="BASE"
-    if(model=="BASE"){
-        tmp <- tempdir() # the temp dir for the data and model
-        if(!dir.exists(tmp)) dir.create(tmp) # create if does not exist
-        # create BASE directory
-        if(!dir.exists(file.path(tmp,"BASE"))){
-          dir.create(file.path(tmp,"BASE"))
-          # add input folder
-          dir.create(file.path(tmp,"BASE","input"))
-          # add output folder
-          dir.create(file.path(tmp,"BASE","output"))
-          # - add instantaneous rates folder
-          dir.create(file.path(tmp,"BASE","output","instantaneous rates"))
-          # - add validation plots folder
-          dir.create(file.path(tmp,"BASE","output","validation plots"))
-        }
-        # add BASE_metab_model_v2.2.txt
-        download.file("https://raw.githubusercontent.com/streampulse/BASE/master/BASE/BASE_metab_model_v2.2.txt",
-            file.path(tmp,"BASE","BASE_metab_model_v2.2.txt"))
-        # directory <- file.path(tmp,"BASE-master/")  # example
-        prep_BASE(fitdata, tmp)
-        fit_BASE(directory=tmp, interval=900)#, n.iter=30000, n.burnin=15000)
-        preds <- predict_BASE(tmp)
-    }else{
+fit_metabolism <- function(fitdata){
+    # check class of fitdata to determine which model to fit
+    model <- class(fitdata)
+    if(model=="streamMetabolizer") model_type <- fitdata@type
+    # then, reset class of fitdata to data.frame, may not be necessary?
+    class(fitdata) <- "data.frame"
+
+    if(model=="streamMetabolizer"){
         # streamMetabolizer functions
         modname <- mm_name(type=model_type, pool_K600="binned",
             err_obs_iid=TRUE, err_proc_acor=FALSE, err_proc_iid=TRUE,
             ode_method = "trapezoid", deficit_src="DO_mod", engine="stan")
         modspecs <- specs(modname)
         modfit <- metab(specs = modspecs, data = fitdata)
-        # Predictions and plots
-        preds <- predict_metab(modfit)
+        modfit
+    }else if(model=="BASE"){
+        tmp <- tempdir() # the temp dir for the data and model
+        if(!dir.exists(tmp)) dir.create(tmp) # create if does not exist
+        # create BASE directory
+        directory <- file.path(tmp,"BASE")
+        if(!dir.exists(directory)){
+            dir.create(directory)
+            # add input folder
+            dir.create(file.path(directory,"input"))
+            # add output folder
+            dir.create(file.path(directory,"output"))
+            # - add instantaneous rates folder
+            dir.create(file.path(directory,"output","instantaneous rates"))
+            # - add validation plots folder
+            dir.create(file.path(directory,"output","validation plots"))
+        }
+        # download BASE_metab_model_v2.2.txt
+        download.file("https://raw.githubusercontent.com/streampulse/BASE/master/BASE/BASE_metab_model_v2.2.txt",
+            file.path(directory,"BASE_metab_model_v2.2.txt"))
+        file.remove(list.files(file.path(directory,"input"),full.names=T)) # clear out input folder
+        fitdata <- split(fitdata, fitdata$Date)
+        # write individual date base files
+        lapply(fitdata, function(xx){
+            if(nrow(xx)==96 && all(complete.cases(xx))){ # only full days
+                date <- unique(xx$Date)[1]
+                write.csv(xx, file=paste0(directory,"/input/BASE_",date,".csv"), row.names=F)
+            }
+        })
+        # found in BASE_functions.R
+        fit_BASE(directory=directory, interval=900, n.iter=30000, n.burnin=15000)
+        structure(list(tmp_BASE_directory = directory), class="BASE") # return the BASE directory with class BASE
     }
-    preds
+}
+
+predict_metabolism <- function(model_fit){
+    if(class(model_fit)=="BASE"){
+      predict_metab(model_fit)
+    }else{
+      directory <- model_fit$tmp_BASE_directory
+      read.csv(paste0(directory,"/output/BASE_results.csv")) %>%
+          separate(File, c("fileX", "date", "extX"), "_|\\.") %>%
+          select(-fileX, -extX) %>% mutate(date=as.Date(date))
+    }
 }
