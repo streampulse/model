@@ -34,23 +34,35 @@ library(tidyr)
 # In the future, turn these codes into a package and just source the package...
 sp_functions <- GET("https://raw.githubusercontent.com/streampulse/model/master/sp_functions.R")
 eval(parse(text = content(sp_functions, as="text", encoding="UTF-8")), envir= .GlobalEnv)
-gapfill_functions <- GET("https://raw.githubusercontent.com/streampulse/model/master/gapfill_functions.R")
-eval(parse(text = content(gapfill_functions, as="text", encoding="UTF-8")), envir= .GlobalEnv)
-BASE_functions <- GET("https://raw.githubusercontent.com/streampulse/model/master/BASE_functions.R")
-eval(parse(text = content(BASE_functions, as="text", encoding="UTF-8")), envir= .GlobalEnv)
 
-# Which modeling framework to use
-# "streamMetabolizer" is default, can also use "BASE"
-model_name <- "streamMetabolizer"
 # Model type for streamMetabolizer
 # We recommend the Bayesian model, but you can also fit "mle", which runs much faster.
 model_type <- "bayes"
+# Which modeling framework to use
+# "streamMetabolizer" is default, can also use "BASE"
+model_name <- "streamMetabolizer"
 
-# Get StreamPULSE data for metabolism modeling
-fitdata <- sp_data_metab(sitecode = "NC_Eno",
+# Download data from streampulse and prepare for metabolism modeling
+fitdata <- prep_metabolism(sitecode = "NC_Eno",
     startdate = "2016-01-01", enddate = "2017-01-01",
     type = model_type, model = model_name, fillgaps = TRUE)
 
-# Fit models
-predictions <- fit_metabolism(fitdata, model_name, model_type)
+# Fit metabolism model
+modelfit <- fit_metabolism(fitdata)
+
+# Gather metabolism predictions
+predictions <- predict_metabolism(modelfit)
 ```
+
+# Contributing
+We welcome outside contributions as pull requests that team members can review.
+
+Project members can follow these steps:
+1. Create a personal branch on the streampulse GitHub page.
+2. Clone the repo. In the terminal, if you have ssh set up: `$ git clone git@github.com:streampulse/model.git`
+3. Checkout your branch: `$ git checkout <branch-name>`
+    and rebase to bring your branch up to date with master before you start editing the files: `$ git rebase master`
+4. Make your edits, then push back to your branch:
+		`$ git commit -am “<my message>”`
+    `$ git push origin <branch-name>`
+5. On GitHub, create a pull request to bring your changes back into the master branch (and maybe ask someone else to look at them).
