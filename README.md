@@ -26,7 +26,6 @@ library(jsonlite)
 library(R2jags)
 library(streamMetabolizer)
 library(tidyr)
-library(zoo)
 
 # REQUIRED code
 # These source our StreamPULSE functions from GitHub
