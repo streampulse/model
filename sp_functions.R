@@ -142,7 +142,7 @@ fit_metabolism <- function(fitdata, model="streamMetabolizer", model_type="bayes
             file.path(tmp,"BASE","BASE_metab_model_v2.2.txt"))
         # directory <- file.path(tmp,"BASE-master/")  # example
         prep_BASE(fitdata, tmp)
-        fit_BASE(directory=tmp, interval=900)#, n.iter=30000, n.burnin=15000)
+        fit_BASE(directory=tmp, interval=900, n.iter=30000, n.burnin=15000)
         preds <- predict_BASE(tmp)
     }else{
         # streamMetabolizer functions
