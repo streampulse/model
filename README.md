@@ -1,21 +1,29 @@
-# Model
-Streampulse metabolism modeling code.
+# Streampulse metabolism modeling code.
 
-change.
+## Workflow
+Fitting metabolism models with streampulse follows three steps:
 
-# Workflow
-Fitting metabolism models with streampulse follows two steps:
-
-1. Downloading/formatting data from the streampulse platform
-2. Fitting the chosen model
+1. Downloading/formatting data from the streampulse platform (with `prep_metabolism()`)
+2. Fitting the chosen model (with `fit_metabolism()`)
   * `model_name = "streamMetabolizer"` runs [streamMetabolizer](https://github.com/USGS-R/streamMetabolizer)
     - `model_type="bayes"` fits a Bayesian model (recommended)
     - `model_type="mle"` fits a maximum likelihood model
   * `model_name = "BASE"` runs [BASE](https://github.com/dgiling/BASE)
+3. Predicting metabolic rates (with `predict_metabolism()`)
 
-The code for these functions is contained in three files: `sp_functions.R`, `gapfill_functions.R`, and `BASE_functions.R` (which are copied from the `dgiling` repo).
+The code for these functions is contained in three files: `sp_functions.R`, `gapfill_functions.R`, and `BASE_functions.R` (which is adapted from the `dgiling/BASE` repo).
 
-# Code
+## Getting data from streampulse
+If you just want to get data from streampulse into R, you can use `sp_data(sitecode, startdate, enddate, variables, flags, token)`
+* `sitecode` is a site name, like "regionID_siteID"
+* `startdate` and `enddate` are YYYY-MM-DD strings, e.g., "1983-12-09"
+* `variables` is a vector of c("variable_one", ..., "variable_n")
+* `flags` is logical, to include flag data (default = FALSE)
+* `token` is a private data token (default = NULL), only relevant if you are accessing embargoed data (none of the core streampulse data are embargoed)
+
+This function queries the RESTful API
+
+## Code
 This example is also available as code in [`model_streampulse.R`](https://github.com/streampulse/model/blob/master/model_streampulse.R).
 
 ```r
@@ -54,15 +62,15 @@ modelfit <- fit_metabolism(fitdata)
 predictions <- predict_metabolism(modelfit)
 ```
 
-# Contributing
+## Contributing
 We welcome outside contributions as pull requests that team members can review.
 
 Project members can follow these steps:
 1. Create a personal branch on the streampulse GitHub page.
 2. Clone the repo. In the terminal, if you have ssh set up: `$ git clone git@github.com:streampulse/model.git`
 3. Checkout your branch: `$ git checkout <branch-name>`
-    and rebase to bring your branch up to date with master before you start editing the files: `$ git rebase master`
+    - and rebase to bring your branch up to date with master before you start editing the files: `$ git rebase master`
 4. Make your edits, then push back to your branch:
-		`$ git commit -am “<my message>”`
-    `$ git push origin <branch-name>`
+		- `$ git commit -am “<my message>”`
+    - `$ git push origin <branch-name>`
 5. On GitHub, create a pull request to bring your changes back into the master branch (and maybe ask someone else to look at them).

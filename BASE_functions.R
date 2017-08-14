@@ -108,17 +108,17 @@ fit_BASE <- function(directory, interval=900, n.iter=10000, n.burnin=5000){
     instant.rates$GPP.instant[rows] <- metab$BUGSoutput$mean$A * PAR^(metab$BUGSoutput$mean$p)
     write.csv(instant.rates, file=file.path(directory,"output/instantaneous rates/instantaneous_rates.csv")) # output file name
 
-    # # diagnostic multi-plot
-    # jpeg(file=file.path(directory,"output/validation plots", paste0(fname, ".jpg")), width=1200, height=1200, pointsize=30)
-    # # fit plot
-    # traceplot(metab, varname=c('A','p','R','K.day','theta'), ask=FALSE, mfrow=c(3,3), mar=c(2,2,0,8), new=FALSE)
-    # plot(1:num.measurements,DO.mod.means, type="l",lwd=2, ylim=c(min(DO.mod.means-DO.mod.sd)-0.5,max(DO.mod.means+DO.mod.sd)+0.5), xlab="Timestep")
-    # points(1:num.measurements,DO.meas,pch=1,xlab="Timestep", col="grey60", cex=0.75)
-    # points(1:num.measurements,DO.mod.means+DO.mod.sd, type="l", lty=2)
-    # points(1:num.measurements,DO.mod.means-DO.mod.sd, type="l", lty=2)
-    # plot(1:num.measurements,tempC,pch=1,xlab="Timestep" , typ='p')
-    # plot(1:num.measurements,PAR,pch=1,xlab="Timestep" , typ='p')
-    # graphics.off()
+    # diagnostic multi-plot
+    jpeg(file=file.path(directory,"output/validation plots", paste0(fname, ".jpg")), width=1200, height=1200, pointsize=30)
+    # fit plot
+    R2jags::traceplot(metab, varname=c('A','p','R','K.day','theta'), ask=FALSE, mfrow=c(3,3), mar=c(2,2,0,8), new=FALSE)
+    plot(1:num.measurements,DO.mod.means, type="l",lwd=2, ylim=c(min(DO.mod.means-DO.mod.sd)-0.5,max(DO.mod.means+DO.mod.sd)+0.5), xlab="Timestep")
+    points(1:num.measurements,DO.meas,pch=1,xlab="Timestep", col="grey60", cex=0.75)
+    points(1:num.measurements,DO.mod.means+DO.mod.sd, type="l", lty=2)
+    points(1:num.measurements,DO.mod.means-DO.mod.sd, type="l", lty=2)
+    plot(1:num.measurements,tempC,pch=1,xlab="Timestep" , typ='p')
+    plot(1:num.measurements,PAR,pch=1,xlab="Timestep" , typ='p')
+    graphics.off()
 
     setTxtProgressBar(pb, which(filenames==fname)) # update progress bar
 
