@@ -19,7 +19,7 @@ eval(parse(text = content(sp_functions, as="text", encoding="UTF-8")), envir= .G
 model_type <- "bayes"
 # Which modeling framework to use
 # "streamMetabolizer" is default, can also use "BASE"
-model_name <- "streamMetabolizer"
+model_name <- "BASE"
 
 # Download data from streampulse and prepare for metabolism modeling
 fitdata <- prep_metabolism(sitecode = "NC_Eno",

@@ -169,7 +169,7 @@ fit_metabolism <- function(fitdata){
         }
         # download BASE_metab_model_v2.2.txt
         download.file("https://raw.githubusercontent.com/streampulse/BASE/master/BASE/BASE_metab_model_v2.2.txt",
-            file.path(directory,"BASE_metab_model_v2.2.txt"))
+            file.path(directory,"BASE_metab_model_v2.2.txt"), quiet=TRUE)
         file.remove(list.files(file.path(directory,"input"),full.names=T)) # clear out input folder
         fitdata <- split(fitdata, fitdata$Date)
         # write individual date base files
@@ -179,19 +179,20 @@ fit_metabolism <- function(fitdata){
                 write.csv(xx, file=paste0(directory,"/input/BASE_",date,".csv"), row.names=F)
             }
         })
+        cat("Estimating metabolism with BASE.\n")
         # found in BASE_functions.R
         fit_BASE(directory=directory, interval=900, n.iter=30000, n.burnin=15000)
-        structure(list(tmp_BASE_directory = directory), class="BASE") # return the BASE directory with class BASE
+        structure(list(output_directory = directory), class="BASE") # return the BASE directory with class BASE
     }
 }
 
 predict_metabolism <- function(model_fit){
     if(class(model_fit)=="BASE"){
-      predict_metab(model_fit)
-    }else{
-      directory <- model_fit$tmp_BASE_directory
+      directory <- model_fit$output_directory
       read.csv(paste0(directory,"/output/BASE_results.csv")) %>%
           separate(File, c("fileX", "date", "extX"), "_|\\.") %>%
           select(-fileX, -extX) %>% mutate(date=as.Date(date))
+    }else{
+      predict_metab(model_fit)
     }
 }
