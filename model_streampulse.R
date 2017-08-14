@@ -37,7 +37,6 @@ predictions <- fit_metabolism(fitdata, model_name, model_type)
 
 
 
-
 # streamMetabolizer comparison
 model_name <- "streamMetabolizer"
 
