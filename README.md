@@ -1,5 +1,5 @@
 # Model
-Streampulse metabolism modeling code
+Streampulse metabolism modeling code.
 
 # Workflow
 Fitting metabolism models with streampulse follows two steps:
