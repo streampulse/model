@@ -39,12 +39,12 @@ top_k <- function(df, k, minobs=3){
         # skip days with less than n observations... hard to say anything about similarity
         if(sum(!is.na(df[i,])) < minobs){ next } # alternative: skip if all na
         # difference between the observations and the rest of the dataframe
-        xdelt <- t(a.n(df[i,]) - t(df))
+        daily_deltas <- t(a.n(df[i,]) - t(df))
         # initialize NA row indexes
         delt <- rep(NA, nrow(df))
         # candidate rows are only rows without nan
         for(j in which(cc)){
-            tt <- xdelt[j,] # the candidate row
+            tt <- daily_deltas[j,] # the candidate row
             # skip comparisons with all NA rows (or self) or where limited comparison data
             if(j == i || all(is.na(tt))){ next }
             wn <- which(is.na(tt)) # which are NA
@@ -62,20 +62,20 @@ top_k <- function(df, k, minobs=3){
 
 # data prep function for fill_gaps
 # adds snap points, gets average data
-prep_missing <- function(df, ns, xd, mm){
+prep_missing <- function(df, nearest_neighbors, daily_averages, mm){
     # df is the data frame
-    # xd is the data frame of days
+    # daily_averages is the data frame of days
     # mm is the missing days
-    # ns is the matching neighbors
+    # nearest_neighbors is the matching neighbors
     #
     ### MISSING DATA
-    missing <- filter(df, date%in%xd$date[mm])
+    missing <- filter(df, date %in% daily_averages$date[mm])
     # if missing first and last obs, extend timeseries to include neighbor days
     #  unless first/last day
     if(any(!complete.cases(missing)[c(1,nrow(missing))])){
         if(mm[1]!=1) mm = c(mm[1]-1, mm) # if not first day, extend obs range
-        if(tail(mm,1)!=nrow(xd)) mm = c(mm, tail(mm,1)+1) # if not last day, extend obs range
-        missing <- filter(df, date%in%xd$date[mm]) # missing one step interpolation
+        if(tail(mm,1)!=nrow(daily_averages)) mm = c(mm, tail(mm,1)+1) # if not last day, extend obs range
+        missing <- filter(df, date%in%daily_averages$date[mm]) # missing one step interpolation
         # if any data missing still (i.e., first and last day), add avg of first and last obs
         #  this should catch most NAs for filling missing
         if(any(!complete.cases(missing)[c(1,nrow(missing))])){
@@ -84,15 +84,15 @@ prep_missing <- function(df, ns, xd, mm){
     }
     ndays <- length(mm)
     ### SIMILAR DATA
-    # grab similar days - tuples of missing day and similar day
-    ss <- data.frame(date=xd$date[mm], match=xd$date[t(ns[mm,])])
+    # grab similar days - pairs of missing day and similar day
+    ss <- data.frame(date=daily_averages$date[mm], match=daily_averages$date[t(nearest_neighbors[mm,])])
     ss <- ss[complete.cases(ss),]
     similar <- left_join(ss, df, by=c("match"="date")) %>%
         select(-match) %>% group_by(date, time) %>% summarize_all(mean) %>% ungroup()
     # make sure that the dates in similar and missing line up
     missing <- right_join(missing, select(similar,date,time), by=c("date","time"))
     ### DAILY SNAP POINTS
-    # add snap points at each new day to rescale
+    # add snap points at beginning/end each new day to rescale and match the daily trends
     newdaypoints <- which(missing$time %in% missing$time[c(1,nrow(missing))])
     daypoints <- missing[newdaypoints,]
     if(any(is.na(daypoints))){
@@ -102,45 +102,47 @@ prep_missing <- function(df, ns, xd, mm){
     list(missing=select(missing,-date,-time), similar=select(similar,-date,-time), index=select(similar,date,time))
 }
 
-fill_missing <- function(df, ns, xd, ids, maxspan, lim=0){
-    # df is the data frame
-    # ns are the similar days for each day
-    # xd is the daily data
-    # ids are the identifiers
-    # maxspan is the maximum number of days to gap fill
+fill_missing <- function(df, nearest_neighbors, daily_averages, date_index, maxspan_days, lim=0){
+    # df is the input data frame, all numeric data
+    # nearest_neighbors are the similar days for each day
+    # daily_averages is the daily data
+    # date_index are the identifiers
+    # maxspan_days is the maximum number of days to gap fill
     # lim is the minimum number of days to fill
     #     will not fill gaps that are less than this
     #     used for testing (b/c the test data have pre-existing gaps)
     #
-    # the days that need filling in xd
-    filld <- which(complete.cases(ns))
+    # the days that need filling in daily_averages
+    filld <- which(complete.cases(nearest_neighbors))
     # groups for blocks of missing data
     group <- cumsum(c(T,diff(filld)>1))
     for(g in unique(group)){
         # grab missing days
         mm <- filld[group==g]
-        if(length(mm)>=lim && length(mm)<maxspan){
-            pp <- prep_missing(df, ns, xd, mm)
+        if( length(mm)>=lim && length(mm)<=maxspan_days ){
+            pp <- prep_missing(df, nearest_neighbors, daily_averages, mm)
             dy <- (pp$missing - pp$similar)
             dyhat <- linear_fill(dy)
             filled <- pp$similar + dyhat
             df[which(paste(df$date,df$time)%in%paste(pp$index$date,pp$index$time)),-c(1,2)] <- filled
         }
     }
-    data.frame(ids,select(df,-date,-time), stringsAsFactors=FALSE)
+    data.frame(date_index, select(df,-date,-time), stringsAsFactors=FALSE)
 }
 
 gap_fill <- function(df, maxspan_days=5, knn=3){
     # df is data frame, requires one column as POSIXct date time and the other columns as numeric
+    #  - the order of columns does not matter
     # currently requires 15 min interval
+    #  - in future can be expanded to check time interval and automatically fix
 
     # check if all but one column is numeric
-    if(!(length(which(sapply(df, function(x) inherits(x, "numeric")))) == ncol(df)-1) ){
+    if( !(length(which(sapply(df, function(x) inherits(x, "numeric")))) == ncol(df)-1) ){
         stop("ERROR: All but one column in df must be numeric.")
     }
     # check if a posix column exists
     wposix <- which(sapply(df, function(x) inherits(x, "POSIXct")))
-    if(!length(wposix)==1){
+    if( !(length(wposix)==1) ){
         stop("ERROR: Need at least one column in df with POSIXct datetime.")
     }
 
@@ -148,22 +150,23 @@ gap_fill <- function(df, maxspan_days=5, knn=3){
     dtcol <- colnames(df)[wposix]
 
     # kind of goofy to do this by date and time, but that's because I translated the code from Python
-    dds <- df %>% mutate(date=as.Date(df[,dtcol]), time=strftime(df[,dtcol], format="%H:%M:%S")) %>%
+    input_data <- df %>% mutate(date=as.Date(df[,dtcol]), time=strftime(df[,dtcol], format="%H:%M:%S")) %>%
         select(-one_of(dtcol)) %>% select(date, time, everything())
     # index data
-    ids <- df %>% select(one_of(dtcol))
+    date_index <- df %>% select(one_of(dtcol))
 
     # linearly interpolate df
     ddl <- dds %>% select(-date, -time) %>% linear_fill(tol=12)
     dds <- data.frame(select(dds,date,time),ddl)
 
     # get daily averages if full day observations, otherwise NA
-    xd <- dds %>% select(-time) %>% group_by(date) %>%
+    daily_averages <- dds %>% select(-time) %>% group_by(date) %>%
         summarize_all(funs((n()==96)*mean(.)))
 
-    ns <- top_k(select(xd,-date), k=knn, minobs=2)
+    # find k nearest neighbors for each day index
+    nearest_neighbors <- top_k(select(daily_averages, -date), k=knn, minobs=2)
 
-    filled <- fill_missing(dds, ns, xd, ids, maxspan=maxspan_days)
+    filled <- fill_missing(input_data, nearest_neighbors, daily_averages, date_index, maxspan_days)
 
     filled
 }
