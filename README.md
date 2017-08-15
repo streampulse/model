@@ -73,6 +73,6 @@ Project members can follow these steps:
     * Checkout your branch `$ git checkout <branch-name>`
     * Rebase to bring your branch up to date with master: `$ git rebase origin master`
 4. Make your edits, then push back to your branch:
-		* `$ git commit -am “<my message>”`
+    * `$ git commit -am “<my message>”`
     * `$ git push origin <branch-name>`
 5. On GitHub, create a pull request to bring your changes back into the master branch (and maybe ask someone else to look at them).
