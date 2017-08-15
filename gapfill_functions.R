@@ -2,7 +2,7 @@ library(dplyr)
 # as numeric shortcut
 a.n <- function(x) as.numeric(x)
 
-# gap fill
+# linearly fill NAs
 na_fill <- function(x, tol=Inf){
     # x is a vector of data
     # tol is max number of steps missing (if greater, it retains NA)
@@ -25,7 +25,7 @@ linear_fill <- function(df, tol=Inf){
 
 # find similar k days
 top_k <- function(df, k, minobs=3){
-    # df is dataframe
+    # df is dataframe of daily values with a row for each date and a colum for each variable
     # k is number of similar days to find
     # minobs is the min. observations required for a day
     D <- matrix(NA, nrow(df), k) # empty dataframe for matches for each day
@@ -55,6 +55,7 @@ top_k <- function(df, k, minobs=3){
         # get top k matches
         D[i,] <- order(delt)[1:k]
     }
+    # returns a matrix with rows for each day and columns with k nearest neighbor days
     D
 }
 
@@ -130,14 +131,27 @@ fill_missing <- function(df, ns, xd, ids, maxspan, lim=0){
 }
 
 gap_fill <- function(df, maxspan_days=5, knn=3){
-    df <- select(df, -DateTime_UTC)
-    # require 15 min interval
+    # df is data frame, requires one column as POSIXct date time and the other columns as numeric
+    # currently requires 15 min interval
+
+    # check if all but one column is numeric
+    if(!(length(which(sapply(df, function(x) inherits(x, "numeric")))) == ncol(df)-1) ){
+        stop("ERROR: All but one column in df must be numeric.")
+    }
+    # check if a posix column exists
+    wposix <- which(sapply(df, function(x) inherits(x, "POSIXct")))
+    if(!length(wposix)==1){
+        stop("ERROR: Need at least one column in df with POSIXct datetime.")
+    }
+
+    # find POSIXct column, that is the one that we need to break into date and time
+    dtcol <- colnames(df)[wposix]
 
     # kind of goofy to do this by date and time, but that's because I translated the code from Python
-    dds <- df %>% mutate(date=as.Date(solar.time), time=strftime(solar.time, format="%H:%M:%S")) %>%
-        select(-c(region, site, solar.time)) %>% select(date, time, everything())
+    dds <- df %>% mutate(date=as.Date(df[,dtcol]), time=strftime(df[,dtcol], format="%H:%M:%S")) %>%
+        select(-one_of(dtcol)) %>% select(date, time, everything())
     # index data
-    ids <- df %>% select(c(region, site, solar.time))
+    ids <- df %>% select(one_of(dtcol))
 
     # linearly interpolate df
     ddl <- dds %>% select(-date, -time) %>% linear_fill(tol=12)
@@ -153,7 +167,3 @@ gap_fill <- function(df, maxspan_days=5, knn=3){
 
     filled
 }
-
-# test
-# df <- read.csv("CT_Farmington.csv")
-# df_filled <- gap_fill(df)

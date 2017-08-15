@@ -47,7 +47,7 @@ prep_metabolism <- function(sitecode, startdate=NULL, enddate=NULL, model="strea
     variables <- c("DO_mgL","DOsat_pct","satDO_mgL","Level_m","Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa","Discharge_m3s")
 
     #### Download data from streampulse
-    cat("Downloading data from StreamPULSE.\n")
+    cat(paste0("Downloading data for ",sitecode," from StreamPULSE.\n"))
     d <- sp_data(sitecode, startdate, enddate, variables, FALSE, token)
 
     #### Format data for models
@@ -80,7 +80,8 @@ prep_metabolism <- function(sitecode, startdate=NULL, enddate=NULL, model="strea
     #### Gap filling
     # can specify maximum number of days to span
     # code found in gapfill_functions.R
-    if(fillgaps) dd <- gap_fill(dd, maxspan_days=5)
+    dd <- select(dd, -c(region, site, DateTime_UTC))
+    if(fillgaps) dd <- gap_fill(dd, maxspan_days=5, knn=3)
 
     # Rename variables
     if("DO_mgL"%in%vd) dd$DO.obs <- dd$DO_mgL

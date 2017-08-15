@@ -1,6 +1,6 @@
-# Streampulse metabolism modeling code.
+# Streampulse metabolism modeling code
 
-## Workflow
+## Metabolism modeling workflow
 Fitting metabolism models with streampulse follows three steps:
 
 1. Downloading/formatting data from the streampulse platform (with `prep_metabolism()`)
@@ -13,7 +13,7 @@ Fitting metabolism models with streampulse follows three steps:
 
 The code for these functions is contained in three files: `sp_functions.R`, `gapfill_functions.R`, and `BASE_functions.R` (which is adapted from the `dgiling/BASE` repo).
 
-## Getting data from streampulse
+## Only getting data from streampulse?
 If you just want to get data from streampulse into R, you can use `sp_data(sitecode, startdate, enddate, variables, flags, token)`
 * `sitecode` is a site name, like "regionID_siteID"
 * `startdate` and `enddate` are YYYY-MM-DD strings, e.g., "1983-12-09"
@@ -71,8 +71,7 @@ Project members can follow these steps:
 2. Clone the repo. In the terminal, if you have ssh set up: `$ git clone git@github.com:streampulse/model.git`
 3. Before you start editing:
     * Checkout your branch `$ git checkout <branch-name>`
-    * Rebase to bring your branch up to date with master: `$ git rebase master`
-    * And then update your local copies: `$ git pull origin master`
+    * Rebase to bring your branch up to date with master: `$ git rebase origin master`
 4. Make your edits, then push back to your branch:
 		* `$ git commit -am “<my message>”`
     * `$ git push origin <branch-name>`
