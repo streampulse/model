@@ -70,14 +70,16 @@ prep_metabolism <- function(sitecode, startdate=NULL, enddate=NULL, model="strea
     dd$solar.time <- suppressWarnings(streamMetabolizer::convert_UTC_to_solartime(date.time=dd$DateTime_UTC, longitude=md$lon[1], time.type="mean solar"))
     # estimate par
     apparentsolartime <- suppressWarnings(streamMetabolizer::convert_UTC_to_solartime(date.time=dd$DateTime_UTC, longitude=md$lon[1], time.type="apparent solar"))
-    cat("NOTE: Modeling PAR based on location and date.\n")
     dd$light <- suppressWarnings(streamMetabolizer::calc_solar_insolation(app.solar.time=apparentsolartime, latitude=md$lat[1], format="degrees"))
     if("Light_PAR"%in%vd){ # fill in with observations
         dd$light[!is.na(dd$Light_PAR)] <- dd$Light_PAR[!is.na(dd$Light_PAR)]
+    }else{
+      cat("NOTE: Modeling PAR based on location and date.\n")
     }
 
-    #### Gap filling, specify maximum number of days to span
-    # found in gapfill_functions.R
+    #### Gap filling
+    # can specify maximum number of days to span
+    # code found in gapfill_functions.R
     if(fillgaps) dd <- gap_fill(dd, maxspan_days=5)
 
     # Rename variables

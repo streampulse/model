@@ -68,9 +68,11 @@ We welcome outside contributions as pull requests that team members can review.
 Project members can follow these steps:
 1. Create a personal branch on the streampulse GitHub page.
 2. Clone the repo. In the terminal, if you have ssh set up: `$ git clone git@github.com:streampulse/model.git`
-3. Checkout your branch: `$ git checkout <branch-name>`
-    - and rebase to bring your branch up to date with master before you start editing the files: `$ git rebase master`
+3. Before you start editing:
+    * Checkout your branch `$ git checkout <branch-name>`
+    * Rebase to bring your branch up to date with master: `$ git rebase master`
+    * And then update your local copies: `$ git pull origin master`
 4. Make your edits, then push back to your branch:
-		- `$ git commit -am “<my message>”`
-    - `$ git push origin <branch-name>`
+		* `$ git commit -am “<my message>”`
+    * `$ git push origin <branch-name>`
 5. On GitHub, create a pull request to bring your changes back into the master branch (and maybe ask someone else to look at them).
