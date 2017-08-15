@@ -133,7 +133,7 @@ fill_missing <- function(df, nearest_neighbors, daily_averages, date_index, maxs
 gap_fill <- function(df, maxspan_days=5, knn=3){
     # df is data frame, requires one column as POSIXct date time and the other columns as numeric
     #  - the order of columns does not matter
-    # currently requires 15 min interval
+    # currently expects 15 min interval
     #  - in future can be expanded to check time interval and automatically fix
 
     # check if all but one column is numeric
@@ -156,11 +156,11 @@ gap_fill <- function(df, maxspan_days=5, knn=3){
     date_index <- df %>% select(one_of(dtcol))
 
     # linearly interpolate df
-    ddl <- dds %>% select(-date, -time) %>% linear_fill(tol=12)
-    dds <- data.frame(select(dds,date,time),ddl)
+    linearfill_data <- input_data %>% select(-date, -time) %>% linear_fill(tol=12)
+    input_data <- data.frame(select(input_data, date, time), linearfill_data)
 
     # get daily averages if full day observations, otherwise NA
-    daily_averages <- dds %>% select(-time) %>% group_by(date) %>%
+    daily_averages <- input_data %>% select(-time) %>% group_by(date) %>%
         summarize_all(funs((n()==96)*mean(.)))
 
     # find k nearest neighbors for each day index
