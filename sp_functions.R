@@ -31,12 +31,6 @@ sp_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL, flag
 }
 
 
-
-
-install.packages("RJSONIO")
-library(RJSONIO)
-library(tidyverse)
-
 sp_data_dev <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL, flags=FALSE, token=NULL){
   # Download data from the streampulse platform
 
