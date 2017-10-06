@@ -30,6 +30,52 @@ sp_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL, flag
     return(d)
 }
 
+
+
+
+install.packages("RJSONIO")
+library(RJSONIO)
+library(tidyverse)
+
+sp_data_dev <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL, flags=FALSE, token=NULL){
+  # Download data from the streampulse platform
+
+  # sitecode is a site name
+  # startdate and enddate are YYYY-MM-DD strings, e.g., '1983-12-09'
+  # variables is a vector of c('variable_one', ..., 'variable_n')
+  # flags is logical, include flag data or not
+  u <- paste0("http://data.streampulse.org/api?sitecode=",sitecode)
+  if(!is.null(startdate)) u <- paste0(u,"&startdate=",startdate)
+  if(!is.null(enddate)) u <- paste0(u,"&enddate=",enddate)
+  if(!is.null(variables)) u <- paste0(u,"&variables=",paste0(variables, collapse=","))
+  if(flags) u <- paste0(u,"&flags=true")
+  cat(paste0('URL: ',u,'\n'))
+  if(is.null(token)){
+    r <- httr::GET(u)
+  }else{
+    r <- httr::GET(u, httr::add_headers(Token = token))
+  }
+  json <- httr::content(r, as="text", encoding="UTF-8")
+  #d <- jsonlite::fromJSON(json)
+  d <- RJSONIO::fromJSON(json) # supposed to take care of NaN
+
+  d$data$DateTime_UTC <- as.POSIXct(d$data$DateTime_UTC,tz="UTC")
+  return(d)
+}
+
+sp_flags <- function(d){
+
+  flag_df <- map_df(d$flags, data.frame) %>%
+    as_tibble %>%
+    select(id, region, site, variable, flag, startDate, endDate, comment) %>%
+    mutate(startDate = as.POSIXct(startDate, format="%a, %d %b %Y %H:%M:%S", tz="UTC"),
+           endDate = as.POSIXct(endDate, format="%a, %d %b %Y %H:%M:%S", tz="UTC"))
+
+  return(flag_df)
+
+}
+
+
 prep_metabolism <- function(sitecode, startdate=NULL, enddate=NULL, model="streamMetabolizer", type="bayes", fillgaps=TRUE, token=NULL){
     #### Download and prepare data for metabolism modeling
 
