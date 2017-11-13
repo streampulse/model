@@ -1,24 +1,41 @@
 # Source gapfilling functions
 gapfill_functions <- GET("https://raw.githubusercontent.com/streampulse/model/master/gapfill_functions.R")
-eval(parse(text = content(gapfill_functions, as="text", encoding="UTF-8")), envir= .GlobalEnv)
+eval(parse(text = content(gapfill_functions, as="text", encoding="UTF-8")),
+    envir= .GlobalEnv)
 
 # Source BASE functions
 BASE_functions <- GET("https://raw.githubusercontent.com/streampulse/model/master/BASE_functions.R")
-eval(parse(text = content(BASE_functions, as="text", encoding="UTF-8")), envir= .GlobalEnv)
+eval(parse(text = content(BASE_functions, as="text", encoding="UTF-8")),
+    envir= .GlobalEnv)
 
-sp_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL, flags=FALSE, token=NULL){
+sp_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
+    flags=FALSE, token=NULL){
     # Download data from the streampulse platform
 
     # sitecode is a site name
     # startdate and enddate are YYYY-MM-DD strings, e.g., '1983-12-09'
     # variables is a vector of c('variable_one', ..., 'variable_n')
     # flags is logical, include flag data or not
+
+    # Basic checks; make list of variables
+    if(length(sitecode)>1) stop("Please only enter one site to model.")
+    if(!is.null(startdate) & !is.null(enddate)){
+        if(as.Date(enddate) < as.Date(startdate)){
+            stop("Start date is after end date.")
+        }
+    }
+    variables <- c("DO_mgL","DOsat_pct","satDO_mgL","Level_m",
+        "Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa","Discharge_m3s")
+
+    #assemble url based on user input
     u <- paste0("http://data.streampulse.org/api?sitecode=",sitecode)
     if(!is.null(startdate)) u <- paste0(u,"&startdate=",startdate)
     if(!is.null(enddate)) u <- paste0(u,"&enddate=",enddate)
     if(!is.null(variables)) u <- paste0(u,"&variables=",paste0(variables, collapse=","))
     if(flags) u <- paste0(u,"&flags=true")
     cat(paste0('URL: ',u,'\n'))
+
+    #retrieve json; read into r object; format date
     if(is.null(token)){
         r <- httr::GET(u)
     }else{
@@ -27,11 +44,12 @@ sp_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL, flag
     json <- httr::content(r, as="text", encoding="UTF-8")
     d <- jsonlite::fromJSON(json)
     d$data$DateTime_UTC <- as.POSIXct(d$data$DateTime_UTC,tz="UTC")
+
     return(d)
 }
 
-
-sp_data_dev <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL, flags=FALSE, token=NULL){
+sp_data_dev <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
+    flags=FALSE, token=NULL){
   # Download data from the streampulse platform
 
   # sitecode is a site name
@@ -69,8 +87,9 @@ sp_flags <- function(d){
 
 }
 
-
-prep_metabolism <- function(sitecode, startdate=NULL, enddate=NULL, model="streamMetabolizer", type="bayes", fillgaps=TRUE, token=NULL){
+#, sitecode=NULL, startdate=NULL,  enddate=NULL,
+prep_metabolism <- function(d, model="streamMetabolizer", type="bayes",
+    fillgaps=TRUE, token=NULL){
     #### Download and prepare data for metabolism modeling
 
     # sitecode is a site name
@@ -80,15 +99,18 @@ prep_metabolism <- function(sitecode, startdate=NULL, enddate=NULL, model="strea
 
     # Basic checks
     if(model=="BASE") type="bayes"
-    if(length(sitecode)>1) stop("Please only enter one site to model.")
-    if(is.null(startdate)&is.null(enddate)){
-        if(as.Date(enddate)<as.Date(startdate)) stop("Start date is after end date.")
-    }
-    variables <- c("DO_mgL","DOsat_pct","satDO_mgL","Level_m","Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa","Discharge_m3s")
+    # if(length(sitecode)>1) stop("Please only enter one site to model.")
+    # if(!is.null(startdate) & !is.null(enddate)){
+    #     if(as.Date(enddate) < as.Date(startdate)){
+    #         stop("Start date is after end date.")
+    #     }
+    # }
+    # variables <- c("DO_mgL","DOsat_pct","satDO_mgL","Level_m",
+    #     "Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa","Discharge_m3s")
 
     #### Download data from streampulse
-    cat(paste0("Downloading data for ",sitecode," from StreamPULSE.\n"))
-    d <- sp_data(sitecode, startdate, enddate, variables, FALSE, token)
+    # cat(paste0("Downloading data for ",sitecode," from StreamPULSE.\n"))
+    # d <- sp_data(sitecode, startdate, enddate, variables, FALSE, token)
 
     #### Format data for models
     cat(paste("Formatting data for ",model,".\n", sep=""))
