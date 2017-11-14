@@ -8,7 +8,7 @@ BASE_functions <- GET("https://raw.githubusercontent.com/streampulse/model/maste
 eval(parse(text = content(BASE_functions, as="text", encoding="UTF-8")),
     envir= .GlobalEnv)
 
-sp_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
+retrieve_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
     flags=FALSE, token=NULL){
     # Download data from the streampulse platform
 
