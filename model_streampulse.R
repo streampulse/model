@@ -11,8 +11,12 @@ library(tidyr)
 # REQUIRED code
 # These source our StreamPULSE functions from GitHub
 # In the future, turn these codes into a package and just source the package...
-sp_functions = GET("https://raw.githubusercontent.com/streampulse/model/master/sp_functions.R")
-eval(parse(text=content(sp_functions, as="text", encoding="UTF-8")), envir=.GlobalEnv)
+
+
+rm(list=ls()); cat('\014')
+source('~/git/streampulse/model/sp_functions.R')
+# sp_functions = GET("https://raw.githubusercontent.com/streampulse/model/master/sp_functions.R")
+# eval(parse(text=content(sp_functions, as="text", encoding="UTF-8")), envir=.GlobalEnv)
 
 # Model type for streamMetabolizer
 # We recommend the Bayesian model ("bayes"), but you can also fit "mle",
@@ -25,7 +29,7 @@ model_name = "streamMetabolizer"
 
 # Select site and date range
 site_code = "NC_Eno" # a combination of the regionID and siteID
-start_date = "2016-01-01"
+start_date = "2016-11-01"
 end_date = "2017-01-01"
 
 # Download data from streampulse

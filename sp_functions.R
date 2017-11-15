@@ -43,36 +43,10 @@ retrieve_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL
     }
     json <- httr::content(r, as="text", encoding="UTF-8")
     d <- jsonlite::fromJSON(json)
+    #d <- RJSONIO::fromJSON(json) # supposed to take care of NaN
     d$data$DateTime_UTC <- as.POSIXct(d$data$DateTime_UTC,tz="UTC")
 
     return(d)
-}
-
-sp_data_dev <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
-    flags=FALSE, token=NULL){
-  # Download data from the streampulse platform
-
-  # sitecode is a site name
-  # startdate and enddate are YYYY-MM-DD strings, e.g., '1983-12-09'
-  # variables is a vector of c('variable_one', ..., 'variable_n')
-  # flags is logical, include flag data or not
-  u <- paste0("http://data.streampulse.org/api?sitecode=",sitecode)
-  if(!is.null(startdate)) u <- paste0(u,"&startdate=",startdate)
-  if(!is.null(enddate)) u <- paste0(u,"&enddate=",enddate)
-  if(!is.null(variables)) u <- paste0(u,"&variables=",paste0(variables, collapse=","))
-  if(flags) u <- paste0(u,"&flags=true")
-  cat(paste0('URL: ',u,'\n'))
-  if(is.null(token)){
-    r <- httr::GET(u)
-  }else{
-    r <- httr::GET(u, httr::add_headers(Token = token))
-  }
-  json <- httr::content(r, as="text", encoding="UTF-8")
-  #d <- jsonlite::fromJSON(json)
-  d <- RJSONIO::fromJSON(json) # supposed to take care of NaN
-
-  d$data$DateTime_UTC <- as.POSIXct(d$data$DateTime_UTC,tz="UTC")
-  return(d)
 }
 
 sp_flags <- function(d){
@@ -87,53 +61,49 @@ sp_flags <- function(d){
 
 }
 
-#, sitecode=NULL, startdate=NULL,  enddate=NULL,
+# d=streampulse_data; model="streamMetabolizer"; type="bayes"
+# fillgaps=TRUE; token=NULL
 prep_metabolism <- function(d, model="streamMetabolizer", type="bayes",
     fillgaps=TRUE, token=NULL){
     #### Download and prepare data for metabolism modeling
 
-    # sitecode is a site name
-    # startdate and enddate are strings "2016-12-11"
     # type is one of "bayes" or "mle"
     # model is one of "streamMetabolizer" or "BASE"
 
     # Basic checks
     if(model=="BASE") type="bayes"
-    # if(length(sitecode)>1) stop("Please only enter one site to model.")
-    # if(!is.null(startdate) & !is.null(enddate)){
-    #     if(as.Date(enddate) < as.Date(startdate)){
-    #         stop("Start date is after end date.")
-    #     }
-    # }
-    # variables <- c("DO_mgL","DOsat_pct","satDO_mgL","Level_m",
-    #     "Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa","Discharge_m3s")
-
-    #### Download data from streampulse
-    # cat(paste0("Downloading data for ",sitecode," from StreamPULSE.\n"))
-    # d <- sp_data(sitecode, startdate, enddate, variables, FALSE, token)
 
     #### Format data for models
     cat(paste("Formatting data for ",model,".\n", sep=""))
     dd <- d$data
+
     # Use USGS level and discharge if missing local versions
-    if("USGSLevel_m"%in%dd$variable && !"Level_m"%in%dd$variable){
+    if("USGSLevel_m" %in% dd$variable && !"Level_m" %in% dd$variable){
         dd$variable[dd$variable=="USGSLevel_m"] <- "Level_m"
     }
-    if("USGSDischarge_m3s"%in%dd$variable && !"Discharge_m3s"%in%dd$variable){
+    if("USGSDischarge_m3s" %in% dd$variable && !"Discharge_m3s" %in% dd$variable){
         dd$variable[dd$variable=="USGSDischarge_m3s"] <- "Discharge_m3s"
     }
+
     vd <- unique(dd$variable) # variables
     dd <- tidyr::spread(dd, variable, value) # spread out data
     md <- d$sites # metadata
-    # force into 15 minute intervals
+
+    # force into 15 minute intervals  ## MAKE THIS MORE VERSATILE
     alldates <- data.frame(DateTime_UTC=seq(dd[1,1],dd[nrow(dd),1],by="15 min"))
     dd <- full_join(alldates, dd, by="DateTime_UTC")
+
     # calculate/define model variables
-    dd$solar.time <- suppressWarnings(streamMetabolizer::convert_UTC_to_solartime(date.time=dd$DateTime_UTC, longitude=md$lon[1], time.type="mean solar"))
+    dd$solar.time <- suppressWarnings(streamMetabolizer::convert_UTC_to_solartime(
+        date.time=dd$DateTime_UTC, longitude=md$lon[1], time.type="mean solar"))
+
     # estimate par
-    apparentsolartime <- suppressWarnings(streamMetabolizer::convert_UTC_to_solartime(date.time=dd$DateTime_UTC, longitude=md$lon[1], time.type="apparent solar"))
-    dd$light <- suppressWarnings(streamMetabolizer::calc_solar_insolation(app.solar.time=apparentsolartime, latitude=md$lat[1], format="degrees"))
-    if("Light_PAR"%in%vd){ # fill in with observations
+    apparentsolartime <- suppressWarnings(
+        streamMetabolizer::convert_UTC_to_solartime(date.time=dd$DateTime_UTC,
+            longitude=md$lon[1], time.type="apparent solar"))
+    dd$light <- suppressWarnings(streamMetabolizer::calc_solar_insolation(
+        app.solar.time=apparentsolartime, latitude=md$lat[1], format="degrees"))
+    if("Light_PAR" %in% vd){ # fill in with observations if available
         dd$light[!is.na(dd$Light_PAR)] <- dd$Light_PAR[!is.na(dd$Light_PAR)]
     }else{
       cat("NOTE: Modeling PAR based on location and date.\n")

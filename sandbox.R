@@ -18,6 +18,13 @@ update.packages(oldPkgs=c("streamMetabolizer","unitted"),
         "https://cran.rstudio.com"))
 
 
+
+
+
+
+
+
+
 #compare stan and jags ####
 pdf(width=7, height=6, compress=FALSE,
     file='~/Dropbox/streampulse/figs/BASE_streamMetab_comparison.pdf')
