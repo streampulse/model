@@ -62,9 +62,9 @@ sp_flags <- function(d){
 }
 
 # d=streampulse_data; model="streamMetabolizer"; type="bayes"
-# fillgaps=TRUE; token=NULL
+# fillgaps=TRUE
 prep_metabolism <- function(d, model="streamMetabolizer", type="bayes",
-    fillgaps=TRUE, token=NULL){
+    fillgaps=TRUE){
     #### Download and prepare data for metabolism modeling
 
     # type is one of "bayes" or "mle"
@@ -88,6 +88,9 @@ prep_metabolism <- function(d, model="streamMetabolizer", type="bayes",
     vd <- unique(dd$variable) # variables
     dd <- tidyr::spread(dd, variable, value) # spread out data
     md <- d$sites # metadata
+
+    # dd[which(substr(dd$DateTime_UTC,6,10)=='11-01'),]
+
 
     # force into 15 minute intervals  ## MAKE THIS MORE VERSATILE
     alldates <- data.frame(DateTime_UTC=seq(dd[1,1],dd[nrow(dd),1],by="15 min"))
@@ -179,6 +182,7 @@ fit_metabolism <- function(fitdata){
     class(fitdata) <- "data.frame"
 
     if(model=="streamMetabolizer"){
+        # if(type=='bayes') engine = 'stan' else engine = 'nlm'
         # streamMetabolizer functions
         modname <- mm_name(type=model_type, pool_K600="binned",
             err_obs_iid=TRUE, err_proc_acor=FALSE, err_proc_iid=TRUE,

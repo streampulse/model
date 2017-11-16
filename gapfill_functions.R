@@ -162,6 +162,10 @@ gap_fill <- function(df, maxspan_days=5, knn=3){
     # index data
     date_index <- df %>% select(one_of(dtcol))
 
+    #for testing:
+    # chili = input_data
+
+
     # linearly interpolate df
     linearfill_data <- input_data %>% select(-date, -time) %>%
         linear_fill(tol=12)

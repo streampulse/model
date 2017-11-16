@@ -29,12 +29,13 @@ model_name = "streamMetabolizer"
 
 # Select site and date range
 site_code = "NC_Eno" # a combination of the regionID and siteID
-start_date = "2016-11-01"
-end_date = "2017-01-01"
+start_date = "2016-10-01"
+end_date = "2017-02-01"
 
 # Download data from streampulse
 streampulse_data = retrieve_data(sitecode=site_code,
-    startdate=start_date, enddate=end_date)
+    startdate=start_date, enddate=end_date, variables=NULL,
+    flags=FALSE, token=NULL)
 
 # Format data for metabolism modeling
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
