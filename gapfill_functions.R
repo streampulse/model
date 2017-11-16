@@ -33,27 +33,30 @@ top_k <- function(df, k, minobs=3){
     # rows with missing data, exclude first and last
     cc <- complete.cases(df)
     narows <- which(!cc)
-    narows <- narows[1:(length(narows)-1)]
-    # for each row with missing data, find similar rows without missing data
-    for (i in narows){
-        # skip days with less than n observations... hard to say anything about similarity
-        if(sum(!is.na(df[i,])) < minobs){ next } # alternative: skip if all na
-        # difference between the observations and the rest of the dataframe
-        daily_deltas <- t(a.n(df[i,]) - t(df))
-        # initialize NA row indexes
-        delt <- rep(NA, nrow(df))
-        # candidate rows are only rows without nan
-        for(j in which(cc)){
-            tt <- daily_deltas[j,] # the candidate row
-            # skip comparisons with all NA rows (or self) or where limited comparison data
-            if(j == i || all(is.na(tt))){ next }
-            wn <- which(is.na(tt)) # which are NA
-            # euclidean distance, not normalized by the length of the vectors
-            #  (b/c we don't care about absolute distance)
-            delt[j] <- tt[-wn] %*% tt[-wn]
+
+    if(length(narows)){ #skip the rest if there are no missing data
+        narows <- narows[1:(length(narows)-1)]
+        # for each row with missing data, find similar rows without missing data
+        for (i in narows){
+            # skip days with less than n observations... hard to say anything about similarity
+            if(sum(!is.na(df[i,])) < minobs){ next } # alternative: skip if all na
+            # difference between the observations and the rest of the dataframe
+            daily_deltas <- t(a.n(df[i,]) - t(df))
+            # initialize NA row indexes
+            delt <- rep(NA, nrow(df))
+            # candidate rows are only rows without nan
+            for(j in which(cc)){
+                tt <- daily_deltas[j,] # the candidate row
+                # skip comparisons with all NA rows (or self) or where limited comparison data
+                if(j == i || all(is.na(tt))){ next }
+                wn <- which(is.na(tt)) # which are NA
+                # euclidean distance, not normalized by the length of the vectors
+                #  (b/c we don't care about absolute distance)
+                delt[j] <- tt[-wn] %*% tt[-wn]
+            }
+            # get top k matches
+            D[i,] <- order(delt)[1:k]
         }
-        # get top k matches
-        D[i,] <- order(delt)[1:k]
     }
     # returns a matrix with rows for each day and columns with k nearest neighbor days
     D
@@ -115,18 +118,21 @@ fill_missing <- function(df, nearest_neighbors, daily_averages,
     #
     # the days that need filling in daily_averages
     filld <- which(complete.cases(nearest_neighbors))
-    # groups for blocks of missing data
-    group <- cumsum(c(T, diff(filld) > 1))
-    for(g in unique(group)){
-        # grab missing days
-        mm <- filld[group==g]
-        if( length(mm)>=lim && length(mm)<=maxspan_days ){
-            pp <- prep_missing(df, nearest_neighbors, daily_averages, mm)
-            dy <- (pp$missing - pp$similar)
-            dyhat <- linear_fill(dy)
-            filled <- pp$similar + dyhat
-            df[which(paste(df$date,df$time) %in%
-                    paste(pp$index$date,pp$index$time)),-c(1,2)] <- filled
+
+    if(length(filld)){ #skip the rest if no data are missing
+        # groups for blocks of missing data
+        group <- cumsum(c(T, diff(filld) > 1))
+        for(g in unique(group)){
+            # grab missing days
+            mm <- filld[group==g]
+            if( length(mm)>=lim && length(mm)<=maxspan_days ){
+                pp <- prep_missing(df, nearest_neighbors, daily_averages, mm)
+                dy <- (pp$missing - pp$similar)
+                dyhat <- linear_fill(dy)
+                filled <- pp$similar + dyhat
+                df[which(paste(df$date,df$time) %in%
+                        paste(pp$index$date,pp$index$time)),-c(1,2)] <- filled
+            }
         }
     }
     data.frame(date_index, select(df,-date,-time), stringsAsFactors=FALSE)
