@@ -15,6 +15,7 @@ library(tidyr)
 
 rm(list=ls()); cat('\014')
 source('~/git/streampulse/model/sp_functions.R')
+source('~/git/streampulse/model/gapfill_functions.R')
 # sp_functions = GET("https://raw.githubusercontent.com/streampulse/model/master/sp_functions.R")
 # eval(parse(text=content(sp_functions, as="text", encoding="UTF-8")), envir=.GlobalEnv)
 
@@ -24,16 +25,16 @@ source('~/git/streampulse/model/sp_functions.R')
 model_type = "bayes"
 
 # Which modeling framework to use
-# "streamMetabolizer" is default; can also use "BASE"
+# "streamMetabolizer" is default; can also use "BASE" (Bayesian only)
 model_name = "streamMetabolizer"
 
 # Select site and date range
 site_code = "NC_Eno" # a combination of the regionID and siteID
 start_date = "2016-11-01"
-end_date = "2017-01-01"
+end_date = "2016-12-01"
 
 # Download data from streampulse
-streampulse_data = retrieve_data(sitecode=site_code,
+streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
     flags=FALSE, token=NULL)
 
@@ -48,5 +49,4 @@ modelfit = fit_metabolism(fitdata)
 
 # Gather metabolism predictions
 predictions = predict_metabolism(modelfit)
-
 

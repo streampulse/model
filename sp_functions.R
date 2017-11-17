@@ -8,7 +8,7 @@ BASE_functions <- GET("https://raw.githubusercontent.com/streampulse/model/maste
 eval(parse(text = content(BASE_functions, as="text", encoding="UTF-8")),
     envir= .GlobalEnv)
 
-retrieve_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
+request_data <- function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
     flags=FALSE, token=NULL){
     # Download data from the streampulse platform
 
@@ -89,10 +89,7 @@ prep_metabolism <- function(d, model="streamMetabolizer", type="bayes",
     dd <- tidyr::spread(dd, variable, value) # spread out data
     md <- d$sites # metadata
 
-    # dd[which(substr(dd$DateTime_UTC,6,10)=='11-01'),]
-
-
-    # force into 15 minute intervals  ## MAKE THIS MORE VERSATILE
+    # force into 15 minute intervals  ## ALLOW VARIABLE INTERVAL
     alldates <- data.frame(DateTime_UTC=seq(dd[1,1],dd[nrow(dd),1],by="15 min"))
     dd <- full_join(alldates, dd, by="DateTime_UTC")
 
@@ -182,11 +179,18 @@ fit_metabolism <- function(fitdata){
     class(fitdata) <- "data.frame"
 
     if(model=="streamMetabolizer"){
-        # if(type=='bayes') engine = 'stan' else engine = 'nlm'
+
+        #choose appropriate model specifications based on model type
+        if(model_type=='bayes'){
+            engine = 'stan'; pool_K600='binned'; proc_err = TRUE
+        } else {
+            engine = 'nlm'; pool_K600='none'; proc_err = FALSE
+        }
+
         # streamMetabolizer functions
-        modname <- mm_name(type=model_type, pool_K600="binned",
-            err_obs_iid=TRUE, err_proc_acor=FALSE, err_proc_iid=TRUE,
-            ode_method = "trapezoid", deficit_src="DO_mod", engine="stan")
+        modname <- mm_name(type=model_type, pool_K600=pool_K600,
+            err_obs_iid=TRUE, err_proc_acor=FALSE, err_proc_iid=proc_err,
+            ode_method = "trapezoid", deficit_src="DO_mod", engine=engine)
         modspecs <- specs(modname)
         modfit <- metab(specs = modspecs, data = fitdata)
         modfit
