@@ -11,30 +11,42 @@ library(tidyr)
 # REQUIRED code
 # These source our StreamPULSE functions from GitHub
 # In the future, turn these codes into a package and just source the package...
-sp_functions <- GET("https://raw.githubusercontent.com/streampulse/model/master/sp_functions.R")
-eval(parse(text=content(sp_functions, as="text", encoding="UTF-8")), envir=.GlobalEnv)
+
+
+rm(list=ls()); cat('\014')
+source('~/git/streampulse/model/sp_functions.R')
+source('~/git/streampulse/model/gapfill_functions.R')
+# sp_functions = GET("https://raw.githubusercontent.com/streampulse/model/master/sp_functions.R")
+# eval(parse(text=content(sp_functions, as="text", encoding="UTF-8")), envir=.GlobalEnv)
 
 # Model type for streamMetabolizer
-# We recommend the Bayesian model, but you can also fit "mle", which runs much faster.
-model_type <- "bayes"
+# We recommend the Bayesian model ("bayes"), but you can also fit "mle",
+# which runs much faster.
+model_type = "bayes"
+
 # Which modeling framework to use
-# "streamMetabolizer" is default, can also use "BASE"
-model_name <- "BASE"
+# "streamMetabolizer" is default; can also use "BASE" (Bayesian only)
+model_name = "streamMetabolizer"
+
+# Select site and date range
+site_code = "NC_Eno" # a combination of the regionID and siteID
+start_date = "2016-11-01"
+end_date = "2016-12-01"
 
 # Download data from streampulse
-d = retrieve_data(sitecode="NC_Eno",
-    startdate="2016-01-01", enddate="2017-01-01")
+streampulse_data = request_data(sitecode=site_code,
+    startdate=start_date, enddate=end_date, variables=NULL,
+    flags=FALSE, token=NULL)
 
 # Format data for metabolism modeling
-fitdata <- prep_metabolism(d, type=model_type, model=model_name,
-    fillgaps=TRUE)
+fitdata = prep_metabolism(d=streampulse_data, type=model_type,
+    model=model_name, fillgaps=TRUE)
 
 # Fit metabolism model
 #  - if using streamMetabolizer, returns a metab model object
 #  - if using BASE, returns a temporary directory where results are saved
-modelfit <- fit_metabolism(fitdata)
+modelfit = fit_metabolism(fitdata)
 
 # Gather metabolism predictions
-predictions <- predict_metabolism(modelfit)
-
+predictions = predict_metabolism(modelfit)
 
