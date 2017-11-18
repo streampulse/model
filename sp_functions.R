@@ -73,7 +73,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     # multiple of your sampling interval.
 
     # Basic checks
-    if(model=="BASE") type="bayes"
+    if(model=="BASE") type="bayes" #can't use mle mode with BASE
     if(!grepl('\\d+ (min|hour)', interval, perl=TRUE)){ #correct interval format
         stop(paste('Interval must be of the form "length [space] unit" where',
             'length is numeric and unit is either "min" or "hour".'))
@@ -147,13 +147,12 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     if("Light_PAR" %in% vd){ # fill in with observations if available
         dd$light[!is.na(dd$Light_PAR)] = dd$Light_PAR[!is.na(dd$Light_PAR)]
     }else{
-      cat("NOTE: Modeling PAR based on location and date.\n")
+      cat("NOTE: Estimating PAR based on location and date.\n")
     }
 
     # impute missing data. code found in gapfill_functions.R
     dd = select(dd, -c(region, site, DateTime_UTC))
     if(fillgaps) dd = gap_fill(dd, maxspan_days=5, knn=3)
-    sum(which(!complete.cases(dd)))
 
     # Rename variables
     if("DO_mgL" %in% vd) dd$DO.obs = dd$DO_mgL

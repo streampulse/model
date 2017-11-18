@@ -1,25 +1,29 @@
 #setup ####
 #install packages from CRAN if necessary
-package_list <- c('coda','dplyr','httr','jsonlite','R2jags','tidyr')
+package_list <- c('coda','dplyr','httr','jsonlite','R2jags','tidyr','imputeTS',
+    'accelerometry')
 new_packages <- package_list[!(package_list %in% installed.packages()[,"Package"])]
 if(length(new_packages)) install.packages(new_packages)
 
-#install streamMetabolizer from github (development version)
+#install streamMetabolizer from github (stable version)
 if (!require("streamMetabolizer")) {
     if (!require("devtools")) install.packages('devtools', repos="http://cran.rstudio.com/")
     library(devtools)
-    install_github('USGS-R/streamMetabolizer', ref='develop') #install from github
+    # install_github('USGS-R/streamMetabolizer', ref='develop') #install from github
+    #install specific stable release on github. check the site to find out
+    #if the library() text doesnt alert you:
+    # https://github.com/USGS-R/streamMetabolizer/releases
+    install_github('USGS-R/streamMetabolizer@v0.10.8')
     detach('package:devtools', unload=TRUE)
 }
-#install specific stable release on github. check the site to find out
-#if the library() text doesnt alert you:
-# https://github.com/USGS-R/streamMetabolizer/releases
-devtools::install_github('USGS-R/streamMetabolizer@v0.10.8')
 
-#make sure streamMetabolizer is up to date in any case
-update.packages(oldPkgs=c("streamMetabolizer","unitted"),
-    dependencies=TRUE, repos=c("https://owi.usgs.gov/R",
-        "https://cran.rstudio.com"))
+#make sure streamMetabolizer is up to date
+# update.packages(oldPkgs=c("streamMetabolizer","unitted"),
+#     dependencies=TRUE, repos=c("https://owi.usgs.gov/R",
+#         "https://cran.rstudio.com"))
+
+#load all packages
+for(i in c(package_list)) library(i, character.only=TRUE)
 
 #experiment ####
 rm(list=ls()); cat('/014')
@@ -112,3 +116,17 @@ lines(predictions$ER, col='red')
 ?mm_name()
 mm_valid_names('mle')
 mm_parse_name(mm_valid_names('mle'))
+
+#temp code ####
+
+x = input_data[7800:7850,-(1:2)]
+x[20:30,2:3] = NA; x[1:5,4:5] = NA; x[12:36,1] = NA
+imputed = sapply(X=x,
+    FUN=gap_impute, tol=12, algorithm='interpolation',
+    simplify=TRUE)
+
+x3 = gap_impute(x, tol=12)
+plot(x3, type='l', col='red')
+lines(x, col='black')
+
+
