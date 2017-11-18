@@ -21,6 +21,23 @@ update.packages(oldPkgs=c("streamMetabolizer","unitted"),
     dependencies=TRUE, repos=c("https://owi.usgs.gov/R",
         "https://cran.rstudio.com"))
 
+#experiment ####
+rm(list=ls()); cat('/014')
+source('~/git/streampulse/model/gapfill_functions.R')
+source('~/git/streampulse/model/sp_functions.R')
+
+model_type = "mle"
+model_name = "streamMetabolizer"
+site_code = "NC_Eno"
+start_date = "2016-01-01"
+end_date = "2017-01-01"
+streampulse_data = request_data(sitecode=site_code,
+    startdate=start_date, enddate=end_date, variables=NULL,
+    flags=FALSE, token=NULL)
+fitdata = prep_metabolism(d=streampulse_data, type=model_type,
+    model=model_name, interval='15 min', fillgaps=TRUE)
+modelfit = fit_metabolism(fitdata)
+predictions = predict_metabolism(modelfit)
 
 
 #compare stan and jags (bayes, gpp with er)####

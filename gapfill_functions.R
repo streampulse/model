@@ -38,20 +38,20 @@ top_k <- function(df, k, minobs=3){
         narows <- narows[1:(length(narows)-1)]
         # for each row with missing data, find similar rows without missing data
         for (i in narows){
-            # skip days with less than n observations... hard to say anything about similarity
-            if(sum(!is.na(df[i,])) < minobs){ next } # alternative: skip if all na
+            # skip days with less than n observations. hard to say anything about similarity
+            if(sum(!is.na(df[i,])) < minobs){ next } # alternative: skip if all NA
             # difference between the observations and the rest of the dataframe
             daily_deltas <- t(a.n(df[i,]) - t(df))
             # initialize NA row indexes
             delt <- rep(NA, nrow(df))
-            # candidate rows are only rows without nan
+            # candidate rows are only rows without NA
             for(j in which(cc)){
                 tt <- daily_deltas[j,] # the candidate row
                 # skip comparisons with all NA rows (or self) or where limited comparison data
                 if(j == i || all(is.na(tt))){ next }
                 wn <- which(is.na(tt)) # which are NA
                 # euclidean distance, not normalized by the length of the vectors
-                #  (b/c we don't care about absolute distance)
+                # (because we don't care about absolute distance)
                 delt[j] <- tt[-wn] %*% tt[-wn]
             }
             # get top k matches
@@ -140,10 +140,8 @@ fill_missing <- function(df, nearest_neighbors, daily_averages,
 
 # df=dd; maxspan_days=5; knn=3
 gap_fill <- function(df, maxspan_days=5, knn=3){
-    # df is data frame, requires one column as POSIXct date time and the other columns as numeric
-    #  - the order of columns does not matter
-    # currently expects 15 min interval
-    #  - in future can be expanded to check time interval and automatically fix
+    # df is data frame, requires one column as POSIXct date time and the
+    # other columns as numeric. the order of columns does not matter.
 
     # check if all but one column is numeric
     if( !(length(which(sapply(df, function(x) inherits(x, "numeric")))) ==
@@ -165,21 +163,18 @@ gap_fill <- function(df, maxspan_days=5, knn=3){
     input_data <- df %>% mutate(date=as.Date(df[,dtcol]),
         time=strftime(df[,dtcol], format="%H:%M:%S")) %>%
         select(-one_of(dtcol)) %>% select(date, time, everything())
-    # index data
-    date_index <- df %>% select(one_of(dtcol))
-
-    #for testing:
-    # chili = input_data
-
+    date_index <- df %>% select(one_of(dtcol)) # index data
 
     # linearly interpolate df
     linearfill_data <- input_data %>% select(-date, -time) %>%
         linear_fill(tol=12)
     input_data <- data.frame(select(input_data, date, time), linearfill_data)
 
-    # get daily averages if full day observations, otherwise NA
+    # get averages for days with full sample coverage; otherwise NA (via mean())
+    samples_per_day = 24 * 60 / as.numeric(int_parts[1]) #based on samp interval
+    # nearly_complete_day = samples_per_day * 0.95
     daily_averages <- input_data %>% select(-time) %>% group_by(date) %>%
-        summarize_all(funs((n()==96)*mean(.)))
+        summarize_all(funs((n() == samples_per_day) * mean(.)))
 
     # find k nearest neighbors for each day index
     nearest_neighbors <- top_k(select(daily_averages, -date), k=knn, minobs=2)
