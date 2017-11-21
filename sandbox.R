@@ -117,6 +117,58 @@ lines(predictions$ER, col='red')
 mm_valid_names('mle')
 mm_parse_name(mm_valid_names('mle'))
 
+#get windspeed and air pressure data for streampulse sites ####
+
+library(geoknife)
+
+#load site list
+sites = read.csv('/home/mike/Dropbox/streampulse/data/site_data.csv',
+    stringsAsFactors=FALSE)
+sites = sites[-which(sites$region == 'PR'),]
+sites = sites[3,]
+
+#get windspeed and air pressure datasets
+webdatasets = query('webdata')
+
+title(webdatasets)
+metdata = webdata(webdatasets[95]) #promising: 77, 95
+
+set_num = grep('speed', abstract(webdatasets), ignore.case=TRUE)
+title(webdatasets[set_num])
+metdata = webdata(webdatasets[set_num[3]]) #only viable one, but doesnt work for 2016-17?
+
+set_num = grep('pressure', abstract(webdatasets))
+title(webdatasets[set_num])
+metdata = webdata(webdatasets[set_num[1]])
+
+#format names
+sites$name = gsub(' ', '-', sites$name)
+stations = as.data.frame(t(sites[,c('lon','lat')]))
+colnames(stations) = paste(sites$region, sites$site, sites$name, sep='_')
+
+# stations = data.frame('Eno_River'=c(-79.0968, 36.0715))
+
+#set extents
+query(metdata, 'variables')
+variables(metdata) = 'wind_speed'
+query(metdata, 'times')
+times(metdata) = as.POSIXct(c("2016-01-01", "2017-01-01"))
+stations = simplegeom(stations)
+
+#edit job details
+# knife = webprocess()
+# knife@wait = TRUE
+# knife@processInputs$REQUIRE_FULL_COVERAGE = 'false'
+# algs = query(webprocess(), 'algorithms')
+# knife@algorithm = algs[4]
+
+#submit job
+metdata_job = geoknife(stencil=stations, fabric=metdata, wait=TRUE)
+metdata_data = result(metdata_job, with.units=TRUE)
+check(metdata_job)
+head(metdata_data)
+44.5117, 44.5118, 44.5117, 44.5116, 44.5117
+-71.8379, -71.8378, -71.8377, -71.8378, -71.8379
 #temp code ####
 
 x = input_data[7800:7850,-(1:2)]

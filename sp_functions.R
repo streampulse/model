@@ -180,7 +180,9 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
                 dd$DO.sat = dd$DO.obs / (dd$DOsat_pct*ff)
             } else {
                 if(!all(c("temp.water","AirPres_kPa") %in% colnames(dd))){
-                    stop("Insufficient data to fit this model.")
+                    stop(paste('Insufficient data to fit this model. Need ',
+                        'either DO sat (mgL) and water temp (C) OR air ',
+                        'pressure (kPa).'))
                 }
                 cat('NOTE: Modeling DO.sat based on water temperature and',
                     'air pressure.\n')
