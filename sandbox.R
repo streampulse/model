@@ -1,7 +1,7 @@
 #setup ####
 #install packages from CRAN if necessary
 package_list <- c('coda','dplyr','httr','jsonlite','R2jags','tidyr','imputeTS',
-    'accelerometry')
+    'accelerometry','geoknife')
 new_packages <- package_list[!(package_list %in% installed.packages()[,"Package"])]
 if(length(new_packages)) install.packages(new_packages)
 
@@ -26,7 +26,7 @@ if (!require("streamMetabolizer")) {
 for(i in c(package_list)) library(i, character.only=TRUE)
 
 #experiment ####
-rm(list=ls()); cat('/014')
+rm(list=ls()); cat('\014')
 source('~/git/streampulse/model/gapfill_functions.R')
 source('~/git/streampulse/model/sp_functions.R')
 
@@ -127,7 +127,7 @@ sites = read.csv('/home/mike/Dropbox/streampulse/data/site_data.csv',
 sites = sites[-which(sites$region == 'PR'),]
 sites = sites[3,]
 
-#get windspeed and air pressure datasets
+#get windspeed and air pressure datasets #(nothing good in the GDP library)
 webdatasets = query('webdata')
 
 title(webdatasets)
@@ -145,8 +145,7 @@ metdata = webdata(webdatasets[set_num[1]])
 sites$name = gsub(' ', '-', sites$name)
 stations = as.data.frame(t(sites[,c('lon','lat')]))
 colnames(stations) = paste(sites$region, sites$site, sites$name, sep='_')
-
-# stations = data.frame('Eno_River'=c(-79.0968, 36.0715))
+# stations = data.frame('Eno_River'=c(-79.0968, 36.0715)) #circumvent the above for testing
 
 #set extents
 query(metdata, 'variables')
@@ -162,13 +161,28 @@ stations = simplegeom(stations)
 # algs = query(webprocess(), 'algorithms')
 # knife@algorithm = algs[4]
 
-#submit job
+#submit job #UI library would do the job, but it's broken
 metdata_job = geoknife(stencil=stations, fabric=metdata, wait=TRUE)
 metdata_data = result(metdata_job, with.units=TRUE)
 check(metdata_job)
 head(metdata_data)
-44.5117, 44.5118, 44.5117, 44.5116, 44.5117
--71.8379, -71.8378, -71.8377, -71.8378, -71.8379
+# 44.5117, 44.5118, 44.5117, 44.5116, 44.5117
+# -71.8379, -71.8378, -71.8377, -71.8378, -71.8379
+
+#instead, lets use noaa
+fabric <- webdata(url = 'https://www.esrl.noaa.gov/psd/thredds/dodsC/Datasets/ncep.reanalysis/surface/vwnd.sig995.2017.nc',
+    variables = "vwnd")
+# keep time as c(NA, NA) to get all times
+stations = simplegeom(stations)
+
+#edit job details
+knife = webprocess(wait=TRUE)
+
+metdata_job = geoknife(stencil=stations, fabric=fabric, knife=knife)
+metdata_data = result(metdata_job, with.units=TRUE)
+check(metdata_job)
+head(metdata_data)
+
 #temp code ####
 
 x = input_data[7800:7850,-(1:2)]

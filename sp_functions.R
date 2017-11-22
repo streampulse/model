@@ -61,16 +61,100 @@ sp_flags = function(d){
 
 }
 
+#verify that datetimes from noaa are in utc and watch out for NA values (-9.96921e+36f)
+# vars=c('windspeed', 'airpressure'); years = 2017
+retrieve_pressure_wind = function(vars, years){
+
+    # years = unique(c(substr(start_date,1,4), substr(end_date,1,4)))
+
+    #format site data for use with geoknife package
+    station = as.data.frame(t(d$sites[,c('lon','lat')]))
+    station = simplegeom(station)
+
+    if('windspeed' %in% vars){
+
+        #setup and initializing
+        components = c('vwnd', 'uwnd')
+        datetime = .POSIXct(character()) #initialize empty POSIXct vector
+        vwnd = uwnd = numeric()
+        message(paste('Acquiring wind speed data for', length(years),
+            'years. Each year takes a few minutes.'))
+
+        #get data
+        for(i in 1:length(years)){
+            for(j in 1:length(components)){
+
+                #get u and v components of windspeed from noaa
+                fabric = webdata(url=paste0('https://www.esrl.noaa.gov/psd/th',
+                    'redds/dodsC/Datasets/ncep.reanalysis/surface/',
+                    components[j], '.sig995.', years[i], '.nc'),
+                    variables=components[j])
+                noaa_job = geoknife(stencil=station, fabric=fabric,
+                    wait=TRUE)
+                noaa_data = result(noaa_job, with.units=TRUE)
+
+                if(j==1) datetime = append(datetime, noaa_data$DateTime)
+                assign(components[j], append(get(components[j]), noaa_data$`1`))
+                # -9.96921e+36f #missing data flagged with this value
+            }
+        }
+
+        wnd = data.frame(datetime, vwnd, uwnd) %>%
+            mutate(wind_speed=sqrt(uwnd^2 + vwnd^2)) %>%
+            select(datetime, wind_speed)
+        # attr(wnd$datetime, 'tzone') = 'UTC'
+    }
+
+    if('airpressure' %in% vars){ #same thing as above, but simpler
+
+        # datetime2 = .POSIXct(character(), tz='GMT')
+        # pres = numeric()
+        pres = data.frame(datetime=.POSIXct(character()), pres=numeric())
+        message(paste('Acquiring air pressure data for', length(years),
+            'years. Each year takes a few minutes.'))
+
+        for(i in 1:length(years)){
+
+            fabric = webdata(url=paste0('https://www.esrl.noaa.gov/psd/th',
+                'redds/dodsC/Datasets/ncep.reanalysis/surface/pres.sfc.',
+                years[i], '.nc'), variables='pres')
+            noaa_job = geoknife(stencil=station, fabric=fabric, wait=TRUE)
+            noaa_data = result(noaa_job, with.units=TRUE)
+
+            pres = rbind(pres, noaa_data[,c('DateTime','1')])
+        }
+
+        pres = data.frame(pres)
+    }
+
+    if('windspeed' %in% vars && 'airpressure' %in% vars){
+        df_out = merge(pres, wnd, by.x='DateTime', by.y='datetime') %>%
+            mutate(air_pressure=X1, DateTime_UTC=DateTime) %>% select(-X1)
+    } else {
+        if(vars == 'windspeed'){
+            df_out = wnd
+        } else df_out = pres %>%
+                mutate(air_pressure = X1, DateTime_UTC=DateTime) %>% select(-X1)
+    }
+
+    return(df_out)
+}
+
 # d=streampulse_data; model="streamMetabolizer"; type="bayes"
 # fillgaps=TRUE; interval='15 min'
+# get_windspeed=TRUE; get_airpressure=TRUE
 prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
-    interval='15 min', fillgaps=TRUE){
+    interval='15 min', fillgaps=TRUE, get_windspeed=FALSE,
+    get_airpressure=FALSE){
     #### format and prepare data for metabolism modeling
 
     # type is one of "bayes" or "mle"
     # model is one of "streamMetabolizer" or "BASE"
     # interval is the desired gap between successive observations. should be a
-    # multiple of your sampling interval.
+        # multiple of your sampling interval.
+    # fillgaps determines whether NAs will be imputed
+    # get_windspeed and get_airpressure query NOAA's ESRL-PSD.
+        # units are m/s and pascals, respectively
 
     # Basic checks
     if(model=="BASE") type="bayes" #can't use mle mode with BASE
@@ -129,10 +213,23 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     # coerce to desired time interval
     alldates = data.frame(DateTime_UTC=seq.POSIXt(dd[1,1], dd[nrow(dd),1],
         by=interval))
-    dd = left_join(alldates, dd, by="DateTime_UTC")
+    dd = left_join(alldates, dd, by='DateTime_UTC')
 
-    # force into 15 minute intervals
-    # alldates = data.frame(DateTime_UTC=seq(dd[1,1],dd[nrow(dd),1],by="15 min"))
+    # acquire additional variables if desired
+    if(get_windspeed || get_airpressure){
+
+        vars = character()
+        if(get_windspeed) vars = append(vars, 'windspeed')
+        if(get_airpressure) vars = append(vars, 'airpressure')
+
+        additional_vars = retrieve_pressure_wind(vars=vars, years=years)
+        dd = left_join(dd, additional_vars, by='DateTime_UTC')
+
+        # linearly interpolate missing values for wind speed and air pressure
+        dd$wind_speed = approx(x=dd$wind_speed, xout=which(is.na(dd$wind_speed)))$y
+        dd$air_pressure = approx(x=dd$air_pressure,
+            xout=which(is.na(dd$air_pressure)))$y
+    }
 
     # calculate/define model variables
     dd$solar.time = suppressWarnings(streamMetabolizer::convert_UTC_to_solartime(
@@ -147,7 +244,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     if("Light_PAR" %in% vd){ # fill in with observations if available
         dd$light[!is.na(dd$Light_PAR)] = dd$Light_PAR[!is.na(dd$Light_PAR)]
     }else{
-      cat("NOTE: Estimating PAR based on location and date.\n")
+      message("Estimating PAR based on location and date.")
     }
 
     # impute missing data. code found in gapfill_functions.R
@@ -292,3 +389,5 @@ predict_metabolism = function(model_fit){
       predict_metab(model_fit)
     }
 }
+
+

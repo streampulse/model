@@ -34,43 +34,52 @@ series_impute = function(x, tol, algorithm, ...){
     return(imputed)
 }
 
+#for sums of squared differences between standardized values from NA days and
+#all other days
+sum_sq_diff = function(x, narow){
+    sum((narow - x)^2, na.rm=TRUE)
+}
+
 # find similar k days
 # df=select(daily_averages, -date); k=3; minobs=2
-top_k = function(df, k, minobs=3){
+top_k = function(df, k, minobs){
     # df is dataframe of daily values with a row for each date and a colum for each variable
     # k is number of similar days to find
     # minobs is the min. observations required for a day
-    D = matrix(NA, nrow(df), k) # empty dataframe for matches for each day
-    # rows with missing data, exclude first and last
+
+    df = df[-c(1,nrow(df)),] #first and last obs are artifacts. removing them.
     cc = complete.cases(df)
     narows = which(!cc)
+    fullrows = which(cc)
+    D = matrix(NA, nrow(df), k) #holds nearest neighbors for each row with NAs
 
-    if(length(narows)){ #skip the rest if there are no missing data
-        narows = narows[1:(length(narows)-1)]
-        # for each row with missing data, find similar rows without missing data
+    enough_full_rows = TRUE
+    if(length(fullrows) < 30){
+        message(paste('Not filling gaps via k nearest neighbors approach;',
+            'fewer than 30 days without NAs for comparison.'))
+        enough_full_rows = FALSE
+    }
+
+    if(length(narows) & enough_full_rows){
+
+        df = apply(df, 2, scale) #standardize variables for comparison of rows
+
+        #for each row with missing data, find k similar rows with none missing
         for (i in narows){
-            # skip days with less than n observations. hard to say anything about similarity
-            if(sum(!is.na(df[i,])) < minobs){ next } # alternative: skip if all NA
-            # difference between the observations and the rest of the dataframe
-            daily_deltas = t(as.numeric(df[i,]) - t(df))
-            # initialize NA row indexes
-            delt = rep(NA, nrow(df))
-            # candidate rows are only rows without NA
-            for(j in which(cc)){
-                tt = daily_deltas[j,] # the candidate row
-                # skip comparisons with all NA rows (or self) or where limited comparison data
-                if(j == i || all(is.na(tt))){ next }
-                wn = which(is.na(tt)) # which are NA
-                # euclidean distance, not normalized by the length of the vectors
-                # (because we don't care about absolute distance)
-                delt[j] = tt[-wn] %*% tt[-wn]
-            }
-            # get top k matches
-            D[i,] = order(delt)[1:k]
+
+            #skip days with less than minobs. cant say much about similarity
+            if(sum(!is.na(df[i,])) < minobs){ next }
+
+            #get sums of squared differences for each full day
+            daily_deltas = apply(df[fullrows,], MARGIN=1, FUN=sum_sq_diff,
+                narow=df[i,])
+            D[i,] = fullrows[order(daily_deltas)[1:k]] #k nearest days
         }
     }
-    # returns a matrix with rows for each day and columns with k nearest neighbor days
-    D
+
+    #restore bogus days at beginning and end of D (for compatibility)
+    D = rbind(rep(NA, ncol(D)), D, rep(NA, ncol(D)))
+    return(D) #matrix with rows for NA days and columns for knn days
 }
 
 # data prep function for fill_gaps
@@ -118,6 +127,7 @@ prep_missing = function(df, nearest_neighbors, daily_averages, mm){
 # df=input_data; lim=0
 fill_missing = function(df, nearest_neighbors, daily_averages,
     date_index, maxspan_days, lim=0){
+
     # df is the input data frame, all numeric data
     # nearest_neighbors are the similar days for each day
     # daily_averages is the daily data
@@ -126,17 +136,20 @@ fill_missing = function(df, nearest_neighbors, daily_averages,
     # lim is the minimum number of days to fill
     #     will not fill gaps that are less than this
     #     used for testing (b/c the test data have pre-existing gaps)
-    #
+
     # the days that need filling in daily_averages
     filld = which(complete.cases(nearest_neighbors))
 
     if(length(filld)){ #skip the rest if no data are missing
+
         # groups for blocks of missing data
-        group = cumsum(c(T, diff(filld) > 1))
+        group = cumsum(c(TRUE, diff(filld) > 1))
+
         for(g in unique(group)){
+
             # grab missing days
-            mm = filld[group==g]
-            if( length(mm)>=lim && length(mm)<=maxspan_days ){
+            mm = filld[group == g]
+            if(length(mm) >= lim && length(mm) <= maxspan_days){
                 pp = prep_missing(df, nearest_neighbors, daily_averages, mm)
                 dy = (pp$missing - pp$similar)
                 dyhat = linear_fill(dy)
@@ -191,7 +204,7 @@ gap_fill = function(df, maxspan_days=5, knn=3){
         summarize_all(funs((n() == samples_per_day) * mean(.)))
 
     # find k nearest neighbors for each day index
-    nearest_neighbors = top_k(select(daily_averages, -date), k=knn, minobs=2)
+    nearest_neighbors = top_k(select(daily_averages, -date), k=knn, minobs=3)
 
     filled = fill_missing(input_data, nearest_neighbors, daily_averages,
         date_index, maxspan_days)
