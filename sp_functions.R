@@ -1,9 +1,9 @@
-# Source gapfilling functions
+# # Source gapfilling functions
 gapfill_functions = GET("https://raw.githubusercontent.com/streampulse/model/master/gapfill_functions.R")
 eval(parse(text = content(gapfill_functions, as="text", encoding="UTF-8")),
     envir= .GlobalEnv)
-
-# Source BASE functions
+#
+# # Source BASE functions
 BASE_functions = GET("https://raw.githubusercontent.com/streampulse/model/master/BASE_functions.R")
 eval(parse(text = content(BASE_functions, as="text", encoding="UTF-8")),
     envir= .GlobalEnv)
@@ -144,15 +144,19 @@ retrieve_pressure_wind = function(vars, years){
 # fillgaps=TRUE; interval='15 min'
 # get_windspeed=TRUE; get_airpressure=TRUE
 prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
-    interval='15 min', fillgaps=TRUE, get_windspeed=FALSE,
-    get_airpressure=FALSE){
+    interval='15 min', fillgaps='interpolation', ...){
+    #, get_windspeed=FALSE,
+    # get_airpressure=FALSE){
+
     #### format and prepare data for metabolism modeling
 
     # type is one of "bayes" or "mle"
     # model is one of "streamMetabolizer" or "BASE"
     # interval is the desired gap between successive observations. should be a
         # multiple of your sampling interval.
-    # fillgaps determines whether NAs will be imputed
+    # fillgaps must be one of the imputation methods available to
+        # imputeTS::na.seasplit or 'none'
+    # ... passes additional arguments to na.seasplit
     # get_windspeed and get_airpressure query NOAA's ESRL-PSD.
         # units are m/s and pascals, respectively
 
@@ -161,6 +165,11 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     if(!grepl('\\d+ (min|hour)', interval, perl=TRUE)){ #correct interval format
         stop(paste('Interval must be of the form "length [space] unit" where',
             'length is numeric and unit is either "min" or "hour".'))
+    }
+    if(!fillgaps %in% c('interpolation','locf','mean','random','kalman','ma',
+        'none')){
+        stop(paste0("fillgaps must be one of 'interpolation', 'locf', 'mean', ",
+            "'random', 'kalman', 'ma', or 'none'"))
     }
 
     #### Format data for models
@@ -216,20 +225,20 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     dd = left_join(alldates, dd, by='DateTime_UTC')
 
     # acquire additional variables if desired
-    if(get_windspeed || get_airpressure){
-
-        vars = character()
-        if(get_windspeed) vars = append(vars, 'windspeed')
-        if(get_airpressure) vars = append(vars, 'airpressure')
-
-        additional_vars = retrieve_pressure_wind(vars=vars, years=years)
-        dd = left_join(dd, additional_vars, by='DateTime_UTC')
-
-        # linearly interpolate missing values for wind speed and air pressure
-        dd$wind_speed = approx(x=dd$wind_speed, xout=which(is.na(dd$wind_speed)))$y
-        dd$air_pressure = approx(x=dd$air_pressure,
-            xout=which(is.na(dd$air_pressure)))$y
-    }
+    # if(get_windspeed || get_airpressure){
+    #
+    #     vars = character()
+    #     if(get_windspeed) vars = append(vars, 'windspeed')
+    #     if(get_airpressure) vars = append(vars, 'airpressure')
+    #
+    #     additional_vars = retrieve_pressure_wind(vars=vars, years=years)
+    #     dd = left_join(dd, additional_vars, by='DateTime_UTC')
+    #
+    #     # linearly interpolate missing values for wind speed and air pressure
+    #     dd$wind_speed = approx(x=dd$wind_speed, xout=which(is.na(dd$wind_speed)))$y
+    #     dd$air_pressure = approx(x=dd$air_pressure,
+    #         xout=which(is.na(dd$air_pressure)))$y
+    # }
 
     # calculate/define model variables
     dd$solar.time = suppressWarnings(streamMetabolizer::convert_UTC_to_solartime(
@@ -249,7 +258,8 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
 
     # impute missing data. code found in gapfill_functions.R
     dd = select(dd, -c(region, site, DateTime_UTC))
-    if(fillgaps) dd = gap_fill(dd, maxspan_days=5, knn=3)
+    if(fillgaps != 'none') dd = gap_fill(dd, maxspan_days=5, knn=3,
+        sint=desired_int, algorithm=fillgaps, ...)
 
     # Rename variables
     if("DO_mgL" %in% vd) dd$DO.obs = dd$DO_mgL

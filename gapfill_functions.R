@@ -1,8 +1,9 @@
 
 # x = input_data[,8]; tol=12; algorithm='interpolation'
-series_impute = function(x, tol, algorithm, ...){
+series_impute = function(x, tol, samp, algorithm, ...){
     # records locations of NA runs longer than tol, imputes all gaps,
     # then replaces NAs for long runs.
+    # samp is the number of samples per day
     # algorithm and ... are passed to imputeTS::na.seasplit
 
     na_locations = which(is.na(x))
@@ -17,13 +18,13 @@ series_impute = function(x, tol, algorithm, ...){
     }
 
     #impute
-    if(length(x) > samples_per_day * 2){ #don't leverage periodicity for <2 days
-        x = ts(x, start=2, frequency=samples_per_day) #add periodicity info
+    if(length(x) > samp * 2){ #don't leverage periodicity for <2 days
+        x = ts(x, start=2, frequency=samp) #add periodicity info
     } else {
         warning(paste('Less than 2 days of data, so interpolating without',
             'periodicity information.'))
     }
-    imputed = as.numeric(suppressWarnings(na.seasplit(x,
+    imputed = as.numeric(suppressWarnings(na.seadec(x,
         algorithm=algorithm, ...)))
 
     #restore NAs where there were long runs
@@ -101,27 +102,35 @@ prep_missing = function(df, nearest_neighbors, daily_averages, mm){
         # if any data missing still (i.e., first and last day), add avg of first and last obs
         #  this should catch most NAs for filling missing
         if(any(!complete.cases(missing)[c(1,nrow(missing))])){
-            missing[c(1,nrow(missing)),-c(1,2)] = apply(missing[c(1,nrow(missing)),-c(1,2)], 2, mean, na.rm=T)
+            missing[c(1,nrow(missing)),-c(1,2)] =
+                apply(missing[c(1,nrow(missing)),-c(1,2)], 2, mean, na.rm=T)
         }
     }
     ndays = length(mm)
     ### SIMILAR DATA
     # grab similar days - pairs of missing day and similar day
-    ss = data.frame(date=daily_averages$date[mm], match=daily_averages$date[t(nearest_neighbors[mm,])])
+    ss = data.frame(date=daily_averages$date[mm],
+        match=daily_averages$date[t(nearest_neighbors[mm,])])
     ss = ss[complete.cases(ss),]
     similar = left_join(ss, df, by=c("match"="date")) %>%
-        select(-match) %>% group_by(date, time) %>% summarize_all(mean) %>% ungroup()
+        select(-match) %>% group_by(date, time) %>% summarize_all(mean) %>%
+        ungroup()
     # make sure that the dates in similar and missing line up
-    missing = right_join(missing, select(similar,date,time), by=c("date","time"))
+    missing = right_join(missing, select(similar,date,time),
+        by=c("date","time"))
     ### DAILY SNAP POINTS
-    # add snap points at beginning/end each new day to rescale and match the daily trends
+    # add snap points at beginning/end each new day to rescale and
+    # match the daily trends
     newdaypoints = which(missing$time %in% missing$time[c(1,nrow(missing))])
     daypoints = missing[newdaypoints,]
     if(any(is.na(daypoints))){
-        dayfill = linear_fill(select(daypoints,-date,-time))
-        missing[newdaypoints,] = data.frame(date=daypoints$date, time=daypoints$time, dayfill)
+        dayfill = series_impute(select(daypoints,-date,-time), tol=0,
+            algorithm='mean')
+        missing[newdaypoints,] = data.frame(date=daypoints$date,
+            time=daypoints$time, dayfill)
     }
-    list(missing=select(missing,-date,-time), similar=select(similar,-date,-time), index=select(similar,date,time))
+    list(missing=select(missing,-date,-time),
+        similar=select(similar,-date,-time), index=select(similar,date,time))
 }
 
 # df=input_data; lim=0
@@ -163,9 +172,10 @@ fill_missing = function(df, nearest_neighbors, daily_averages,
 }
 
 # df=dd; maxspan_days=5; knn=3
-gap_fill = function(df, maxspan_days=5, knn=3){
+gap_fill = function(df, maxspan_days=5, knn=3, sint, algorithm, ...){
     # df is data frame, requires one column as POSIXct date time and the
     # other columns as numeric. the order of columns does not matter.
+    # int is the interval between samples
 
     # check if all but one column is numeric
     if( !(length(which(sapply(df, function(x) inherits(x, "numeric")))) ==
@@ -190,12 +200,15 @@ gap_fill = function(df, maxspan_days=5, knn=3){
     date_index = df %>% select(one_of(dtcol)) # index data
 
     #get daily sampling frequency so imputation can leverage periodicity
-    samples_per_day = 24 * 60 / as.double(desired_int, units='mins')
+    samples_per_day = 24 * 60 / as.double(sint, units='mins')
+
+    #put knn gapfiller here, before in-line gapfiller
 
     # impute in-line gaps (runs of NAs within a column) in df
     imputed = as.data.frame(sapply(X=input_data[,-(1:2)],
-            FUN=series_impute, tol=12, algorithm='interpolation',
-            simplify=FALSE)) #gaps >= tol will not be filled
+        FUN=series_impute, tol=12, samp=samples_per_day,
+        algorithm=algorithm, ...,
+        simplify=FALSE)) #gaps >= tol will not be filled
     input_data = data.frame(select(input_data, date, time), imputed)
 
     # get averages for days with full sample coverage; otherwise NA (via mean())
@@ -209,5 +222,5 @@ gap_fill = function(df, maxspan_days=5, knn=3){
     filled = fill_missing(input_data, nearest_neighbors, daily_averages,
         date_index, maxspan_days)
 
-    filled
+    return(filled)
 }

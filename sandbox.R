@@ -30,7 +30,7 @@ rm(list=ls()); cat('\014')
 source('~/git/streampulse/model/gapfill_functions.R')
 source('~/git/streampulse/model/sp_functions.R')
 
-model_type = "mle"
+model_type = "bayes"
 model_name = "streamMetabolizer"
 site_code = "NC_Eno"
 start_date = "2016-01-01"
