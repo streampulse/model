@@ -39,9 +39,48 @@ streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
     flags=FALSE, token=NULL)
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
-    model=model_name, interval='15 min', fillgaps=TRUE)
-modelfit = fit_metabolism(fitdata)
+    model=model_name, interval='15 min', fillgaps='interpolation')
+
+# modelfit = fit_metabolism(fitdata)
+
+# load('/tmp/mozilla_mike0/site86_SM.rds')
+# load('/tmp/mozilla_mike0/site83_SM.rds')
+# fitdata_good = fitdata
+# fitdata_bad = fitdata
+str(fitdata_good)
+str(fitdata_bad)
+apply(fitdata_good, 2, function(x) sum(is.na(x)))
+apply(fitdata_bad, 2, function(x) sum(is.na(x)))
+bad_na = fitdata_bad[is.na(fitdata_bad$depth),]
+good_na = fitdata_good[is.na(fitdata_good$depth),]
+fitdata_bad[is.na(fitdata_bad$depth) & !is.na(fitdata_bad$DO.obs),c(4,7)] = c(.16,.07)
+fitdata = fitdata_bad
+
+class(fitdata) = "data.frame"
+engine = 'stan'; pool_K600='binned'; proc_err = TRUE
+modname <- mm_name(type='bayes', pool_K600='binned',
+    err_obs_iid=TRUE, err_proc_acor=FALSE, err_proc_iid=TRUE,
+    ode_method = 'trapezoid', deficit_src='DO_mod', engine='stan')
+modspecs <- specs(modname)
+# modspecs$K600_lnQ_nodes_centers <- seq(from=md$logQ_min[n],
+#     to = md$logQ_max[n], by = md$Qnodes_steps[n])
+modspecs$K600_lnQ_nodes_centers = seq(from=.74, to = 5.25, by = .75)
+modelfit <- metab(specs = modspecs, data = fitdata)
+metab_fun
+
 predictions = predict_metabolism(modelfit)
+
+#plot
+ymin = min(c(predictions$ER,predictions$GPP), na.rm=TRUE)
+ymax = max(c(predictions$ER,predictions$GPP), na.rm=TRUE)
+ind = which(!is.na(predictions$GPP))
+plot(predictions$GPP[ind], type='l', ylim=c(ymin, ymax),
+    main='streamMetabolizer', xlab='Date', xaxt='n', ylab='g O2/m^2/d', las=1)
+plot(predictions$GPP)
+axis(1, seq(1,92,10), predictions$date[ind][seq(1,92,10)])
+lines(predictions$ER[ind], col='red')
+legend('topright', legend=c('GPP','ER'), lty=1, col=c('black','red'), bty='n')
+
 
 
 #compare stan and jags (bayes, gpp with er)####

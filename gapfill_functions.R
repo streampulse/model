@@ -1,5 +1,6 @@
 
 # x = input_data[,8]; tol=12; algorithm='interpolation'
+# x=select(daypoints,-date,-time); tol=0; samp=samp; algorithm='mean'
 series_impute = function(x, tol, samp, algorithm, ...){
     # records locations of NA runs longer than tol, imputes all gaps,
     # then replaces NAs for long runs.
@@ -85,7 +86,7 @@ top_k = function(df, k, minobs){
 
 # data prep function for fill_gaps
 # adds snap points, gets average data
-prep_missing = function(df, nearest_neighbors, daily_averages, mm){
+prep_missing = function(df, nearest_neighbors, daily_averages, mm, samp){
     # df is the data frame
     # daily_averages is the data frame of days
     # mm is the missing days
@@ -125,7 +126,7 @@ prep_missing = function(df, nearest_neighbors, daily_averages, mm){
     daypoints = missing[newdaypoints,]
     if(any(is.na(daypoints))){
         dayfill = series_impute(select(daypoints,-date,-time), tol=0,
-            algorithm='mean')
+            samp=samp, algorithm='mean')
         missing[newdaypoints,] = data.frame(date=daypoints$date,
             time=daypoints$time, dayfill)
     }
@@ -133,9 +134,9 @@ prep_missing = function(df, nearest_neighbors, daily_averages, mm){
         similar=select(similar,-date,-time), index=select(similar,date,time))
 }
 
-# df=input_data; lim=0
+# df=input_data; lim=0; samp=samples_per_day; g=1
 fill_missing = function(df, nearest_neighbors, daily_averages,
-    date_index, maxspan_days, lim=0){
+    date_index, maxspan_days, samp, lim=0){
 
     # df is the input data frame, all numeric data
     # nearest_neighbors are the similar days for each day
@@ -159,7 +160,8 @@ fill_missing = function(df, nearest_neighbors, daily_averages,
             # grab missing days
             mm = filld[group == g]
             if(length(mm) >= lim && length(mm) <= maxspan_days){
-                pp = prep_missing(df, nearest_neighbors, daily_averages, mm)
+                pp = prep_missing(df, nearest_neighbors, daily_averages, mm,
+                    samp)
                 dy = (pp$missing - pp$similar)
                 dyhat = linear_fill(dy)
                 filled = pp$similar + dyhat
@@ -171,7 +173,7 @@ fill_missing = function(df, nearest_neighbors, daily_averages,
     data.frame(date_index, select(df,-date,-time), stringsAsFactors=FALSE)
 }
 
-# df=dd; maxspan_days=5; knn=3
+# df=dd; maxspan_days=5; knn=3; sint=desired_int; algorithm=fillgaps
 gap_fill = function(df, maxspan_days=5, knn=3, sint, algorithm, ...){
     # df is data frame, requires one column as POSIXct date time and the
     # other columns as numeric. the order of columns does not matter.
@@ -220,7 +222,7 @@ gap_fill = function(df, maxspan_days=5, knn=3, sint, algorithm, ...){
     nearest_neighbors = top_k(select(daily_averages, -date), k=knn, minobs=3)
 
     filled = fill_missing(input_data, nearest_neighbors, daily_averages,
-        date_index, maxspan_days)
+        date_index, maxspan_days, samp=samples_per_day)
 
     return(filled)
 }

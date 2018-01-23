@@ -143,6 +143,7 @@ retrieve_pressure_wind = function(vars, years){
 # d=streampulse_data; model="streamMetabolizer"; type="bayes"
 # fillgaps=TRUE; interval='15 min'
 # get_windspeed=TRUE; get_airpressure=TRUE
+# d=streampulse_data; type='mle'; model='streamMetabolizer'; interval='15 min'; fillgaps='interpolation'
 prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     interval='15 min', fillgaps='interpolation', ...){
     #, get_windspeed=FALSE,
