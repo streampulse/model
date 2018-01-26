@@ -1,12 +1,12 @@
-# # Source gapfilling functions
-# gapfill_functions = GET("https://raw.githubusercontent.com/streampulse/model/master/gapfill_functions.R")
-# eval(parse(text = content(gapfill_functions, as="text", encoding="UTF-8")),
-#     envir= .GlobalEnv)
-#
-# # Source BASE functions
-# BASE_functions = GET("https://raw.githubusercontent.com/streampulse/model/master/BASE_functions.R")
-# eval(parse(text = content(BASE_functions, as="text", encoding="UTF-8")),
-#     envir= .GlobalEnv)
+# Source gapfilling functions
+gapfill_functions = GET("https://raw.githubusercontent.com/streampulse/model/master/gapfill_functions.R")
+eval(parse(text = content(gapfill_functions, as="text", encoding="UTF-8")),
+    envir= .GlobalEnv)
+
+# Source BASE functions
+BASE_functions = GET("https://raw.githubusercontent.com/streampulse/model/master/BASE_functions.R")
+eval(parse(text = content(BASE_functions, as="text", encoding="UTF-8")),
+    envir= .GlobalEnv)
 
 request_data = function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
     flags=FALSE, token=NULL){
