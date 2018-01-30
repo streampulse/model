@@ -143,6 +143,7 @@ prep_missing = function(df, nearest_neighbors, daily_averages, mm, samp){
     daypoints = missing[newdaypoints,]
 
     if(any(is.na(daypoints))){
+        #tol should be greater here probably?
         dayfill = series_impute(select(daypoints,-date,-time), tol=0,
             samp=samp, algorithm='mean')
         missing[newdaypoints,] = data.frame(date=daypoints$date,
@@ -245,7 +246,7 @@ gap_fill = function(df, maxspan_days=5, knn=3, sint, algorithm, ...){
 
     # impute in-line gaps (runs of NAs within a column) in df
     imputed = as.data.frame(sapply(X=input_data[,-(1:2)],
-        FUN=series_impute, tol=12, samp=samples_per_day,
+        FUN=series_impute, tol=192, samp=samples_per_day,
         algorithm=algorithm, ...,
         simplify=FALSE)) #gaps >= tol will not be filled
     input_data = data.frame(select(input_data, date, time), imputed)
