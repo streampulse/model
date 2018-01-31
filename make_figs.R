@@ -3,7 +3,7 @@ rm(list=ls()); cat('\014')
 #setup ####
 #install packages from CRAN if necessary
 package_list <- c('coda','plyr','dplyr','httr','jsonlite','R2jags',
-    'tidyr','imputeTS','accelerometry','geoknife','MetaboPlots')
+    'tidyr','imputeTS','accelerometry','geoknife','MetaboPlots','zoo')
 new_packages <- package_list[!(package_list %in% installed.packages()[,"Package"])]
 if(length(new_packages)) install.packages(new_packages)
 
@@ -38,10 +38,10 @@ site_code = "AZ_LV"
 start_date = "2017-07-07"
 end_date = "2017-12-25"
 site_code = "AZ_OC"
-start_date = "2016-11-13"
-# start_date = "2016-11-15"
-# end_date = "2017-02-13"
-end_date = "2017-12-03"
+# start_date = "2016-11-13"
+start_date = "2016-11-15"
+end_date = "2017-02-13"
+# end_date = "2017-12-03"
 site_code = "NC_Eno"
 start_date = "2016-01-01"
 end_date = "2017-01-01"
@@ -64,6 +64,8 @@ fitdata$DO.sat[3811:3835] = mean(fitdata$DO.sat)
 # fitdata$DO.obs[(3798-187):(3897-190)] = 11
 fitdata$DO.sat[(3811-187):(3835-190)] = mean(fitdata$DO.sat)
 # fitdata$DO.sat[0:200] = 10
+fitdata$depth[fitdata$depth < 0] = 0.00001
+plot(fitdata$depth, type='l')
 
 modelfit = fit_metabolism(fitdata)
 
@@ -73,9 +75,12 @@ modname <- mm_name(type='bayes', pool_K600='binned',
     err_obs_iid=TRUE, err_proc_acor=FALSE, err_proc_iid=TRUE,
     ode_method = 'trapezoid', deficit_src='DO_mod', engine='stan')
 modspecs <- specs(modname)
-# modspecs$K600_lnQ_nodes_centers <- seq(from=md$logQ_min[n],
-#     to = md$logQ_max[n], by = md$Qnodes_steps[n])
-modspecs$K600_lnQ_nodes_centers = seq(from=.74, to = 5.25, by = .75)
+
+addis = tapply(log(fitdata$discharge),
+    substr(fitdata$solar.time,1,10), mean)
+modspecs$K600_lnQ_nodes_centers = seq(from=min(addis),
+    to=max(addis), length.out=7)
+
 modelfit <- metab(specs = modspecs, data = fitdata)
 
 # saveRDS(modelfit, paste('~/Dropbox/streampulse/data/models/model_objects/',
