@@ -30,7 +30,7 @@ for(i in c(package_list)) library(i, character.only=TRUE)
 source('~/git/streampulse/model/gapfill_functions.R')
 source('~/git/streampulse/model/sp_functions.R')
 
-model_type = "mle"
+model_type = "bayes"
 model_name = "streamMetabolizer"
 fillgaps='interpolation'
 interval='15 min'
@@ -39,6 +39,8 @@ start_date = "2017-07-07"
 end_date = "2017-12-25"
 site_code = "AZ_OC"
 start_date = "2016-11-13"
+# start_date = "2016-11-15"
+# end_date = "2017-02-13"
 end_date = "2017-12-03"
 site_code = "NC_Eno"
 start_date = "2016-01-01"
@@ -55,9 +57,13 @@ source('~/git/streampulse/model/gapfill_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     model=model_name, interval=interval, fillgaps=fillgaps)
 
-plot(fitdata$DO.obs, type='l')
+plot(fitdata$DO.sat, type='l')
+# plot(fitdata$DO.sat, type='l', xlim=c(3625,3645))
 fitdata$DO.obs[3798:3897] = 11
 fitdata$DO.sat[3811:3835] = mean(fitdata$DO.sat)
+# fitdata$DO.obs[(3798-187):(3897-190)] = 11
+fitdata$DO.sat[(3811-187):(3835-190)] = mean(fitdata$DO.sat)
+# fitdata$DO.sat[0:200] = 10
 
 modelfit = fit_metabolism(fitdata)
 
