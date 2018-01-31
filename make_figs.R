@@ -49,10 +49,15 @@ end_date = "2016-12-30"
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
     flags=FALSE, token=NULL)
-# head(streampulse_data)
+# head(streampulse_data$data)
+source('~/git/streampulse/model/sp_functions.R')
 source('~/git/streampulse/model/gapfill_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     model=model_name, interval=interval, fillgaps=fillgaps)
+
+plot(fitdata$DO.obs, type='l')
+fitdata$DO.obs[3798:3897] = 11
+fitdata$DO.sat[3811:3835] = mean(fitdata$DO.sat)
 
 modelfit = fit_metabolism(fitdata)
 

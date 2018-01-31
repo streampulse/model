@@ -274,9 +274,10 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
 
                 # define multiplicative factor, to catch if variable is
                 # fraction or percent... could do this on server first in future
-                if(quantile(dd$DOsat_pct, 0.9, na.rm=T) > 10){
+                if(quantile(dd$DOsat_pct, 0.9, na.rm=TRUE) > 10){
                     ff=0.01
                 } else { ff=1 }
+                dd$DOsat_pct[dd$DOsat_pct == 0] = 0.000001 #prevent NaNs
                 dd$DO.sat = dd$DO.obs / (dd$DOsat_pct*ff)
             } else {
                 if(!all(c("temp.water","AirPres_kPa") %in% colnames(dd))){
@@ -340,13 +341,24 @@ fit_metabolism = function(fitdata){
             engine = 'nlm'; pool_K600='none'; proc_err = FALSE
         }
 
-        # streamMetabolizer functions
+        # set most model specs
         modname = mm_name(type=model_type, pool_K600=pool_K600,
             err_obs_iid=TRUE, err_proc_acor=FALSE, err_proc_iid=proc_err,
             ode_method = "trapezoid", deficit_src="DO_mod", engine=engine)
         modspecs = specs(modname)
-        modfit = metab(specs = modspecs, data = fitdata)
-        modfit
+
+        #get average log daily discharge and use it to parameterize k v. Q curve
+        if(engine == 'stan'){
+            addis = tapply(log(fitdata$discharge),
+                substr(fitdata$solar.time,1,10), mean)
+            modspecs$K600_lnQ_nodes_centers = seq(from=min(addis),
+                to=max(addis), length.out=7)
+        }
+
+        #fit model
+        modfit = metab(specs=modspecs, data=fitdata)
+        return(modfit)
+
     }else if(model=="BASE"){
         tmp = tempdir() # the temp dir for the data and model
         if(!dir.exists(tmp)) dir.create(tmp) # create if does not exist

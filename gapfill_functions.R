@@ -5,9 +5,17 @@ series_impute = function(x, tol, samp, algorithm, ...){
     # records locations of NA runs longer than tol, imputes all gaps,
     # then replaces NAs for long runs.
     # samp is the number of samples per day
-    # algorithm and ... are passed to imputeTS::na.seadec
+    # algorithm and ... are passed to imputeTS::na.seasplit
 
     na_locations = which(is.na(x))
+    # if(length(na_locations)){
+    #     x2 <<- x
+    #     samp2 <<- samp
+    # }
+    # x = x2
+    # samp = samp2
+    # tol=Inf; algorithm='interpolation'
+
     # message(dim(x))
     # message(dim(na_locations))
     if(length(na_locations)){ #if NAs in x, get indices of long runs
@@ -26,7 +34,7 @@ series_impute = function(x, tol, samp, algorithm, ...){
         warning(paste('Less than 2 days of data, so interpolating without',
             'periodicity information.'))
     }
-    imputed = as.numeric(suppressWarnings(na.seadec(x,
+    imputed = as.numeric(suppressWarnings(na.seasplit(x,
         algorithm=algorithm, ...)))
 
     #restore NAs where there were long runs
@@ -263,7 +271,7 @@ gap_fill = function(df, maxspan_days=5, knn=3, sint, algorithm, ...){
 
     filled = fill_missing(input_data, nearest_neighbors, daily_averages,
         date_index, maxspan_days, samp=samples_per_day)
-    
+
     #remove columns with 0 or 1 non-NA value. these cannot be imputed.
     vals_per_col = apply(filled[,-1], 2, function(x) sum(!is.na(x)))
     too_few_val_cols = vals_per_col %in% c(0,1)
@@ -274,10 +282,12 @@ gap_fill = function(df, maxspan_days=5, knn=3, sint, algorithm, ...){
             paste(too_few_val_cols, collapse=', '),
             '. Dropping column(s), which may result in fatal error.'))
     }
-    
+
     #linearly impute any remaining gaps
+    filled[is.na(filled)] = NA #replace any NaNs with NAs
     filled[,-1] = apply(filled[,-1], 2, na.fill, 'extend')
-    
+    # print(sum(is.na(filled)))
+
     return(filled)
     # return(input_data)
 }
