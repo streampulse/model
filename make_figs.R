@@ -50,7 +50,7 @@ start_date = "2016-09-30"
 end_date = "2016-12-30"
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
-    flags=TRUE, token=NULL)
+    flags=F, token=NULL)
 head(streampulse_data$data)
 dim(streampulse_data$data)
 source('~/git/streampulse/model/sp_functions.R')

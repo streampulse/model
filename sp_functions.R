@@ -39,10 +39,12 @@ request_data = function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
     #d = RJSONIO::fromJSON(json) # supposed to take care of NaN
     d$data$DateTime_UTC = as.POSIXct(d$data$DateTime_UTC,tz="UTC")
 
-    #rearrange columns
-    notflagcols = colnames(d$data)[which(!colnames(d$data) %in%
-            c('flagtype','flagcomment'))]
-    d$data = cbind(d$data[,notflagcols], d$data[,c('flagtype','flagcomment')])
+    #rearrange columns if flag data present
+    if(flags){
+        notflagcols = colnames(d$data)[which(!colnames(d$data) %in%
+                c('flagtype','flagcomment'))]
+        d$data = cbind(d$data[,notflagcols], d$data[,c('flagtype','flagcomment')])
+    }
 
     return(d)
 }
@@ -178,6 +180,9 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         stop(paste0("rm_flagged must either be 'none' or a list containing any",
             " of: 'Bad Data', 'Questionable', 'Interesting'."))
     }
+    if(any(rm_flagged != 'none') & ! 'flagtype' %in% colnames(d$data)){
+        stop('No flag data available. Call request_data again with flags=TRUE.')
+    }
 
     #### Format data for models
     cat(paste("Formatting data for ",model,".\n", sep=""))
@@ -187,9 +192,8 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     if(any(rm_flagged != 'none')){
         flags_to_remove = unique(unlist(rm_flagged))
         dd = dd[! dd$flagtype %in% flags_to_remove,]
+        dd = subset(dd, select=-c(flagtype, flagcomment))
     }
-
-    dd = subset(dd, select=-c(flagtype, flagcomment))
 
     # Use USGS level and discharge if missing local versions
     if("USGSLevel_m" %in% dd$variable && !"Level_m" %in% dd$variable){
