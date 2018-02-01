@@ -20,8 +20,7 @@ request_data = function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
         "Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa","Discharge_m3s")
 
     #assemble url based on user input
-    # u = paste0("http://data.streampulse.org/api?sitecode=",sitecode)
-    u = paste0("localhost:5000/api?sitecode=",sitecode)
+    u = paste0("http://data.streampulse.org/api?sitecode=",sitecode)
     if(!is.null(startdate)) u = paste0(u,"&startdate=",startdate)
     if(!is.null(enddate)) u = paste0(u,"&enddate=",enddate)
     if(!is.null(variables)) u = paste0(u,"&variables=",paste0(variables, collapse=","))
