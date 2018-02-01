@@ -20,7 +20,8 @@ request_data = function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
         "Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa","Discharge_m3s")
 
     #assemble url based on user input
-    u = paste0("http://data.streampulse.org/api?sitecode=",sitecode)
+    # u = paste0("http://data.streampulse.org/api?sitecode=",sitecode)
+    u = paste0("localhost:5000/api?sitecode=",sitecode)
     if(!is.null(startdate)) u = paste0(u,"&startdate=",startdate)
     if(!is.null(enddate)) u = paste0(u,"&enddate=",enddate)
     if(!is.null(variables)) u = paste0(u,"&variables=",paste0(variables, collapse=","))
@@ -37,6 +38,11 @@ request_data = function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
     d = jsonlite::fromJSON(json)
     #d = RJSONIO::fromJSON(json) # supposed to take care of NaN
     d$data$DateTime_UTC = as.POSIXct(d$data$DateTime_UTC,tz="UTC")
+
+    #rearrange columns
+    notflagcols = colnames(d$data)[which(!colnames(d$data) %in%
+            c('flagtype','flagcomment'))]
+    d$data = cbind(d$data[,notflagcols], d$data[,c('flagtype','flagcomment')])
 
     return(d)
 }
@@ -137,16 +143,19 @@ retrieve_pressure_wind = function(vars, years){
 # get_windspeed=TRUE; get_airpressure=TRUE
 # d=streampulse_data; type='mle'; model='streamMetabolizer'; interval='15 min'; fillgaps='interpolation'
 prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
-    interval='15 min', fillgaps='interpolation', ...){
+    interval='15 min', rm_flagged='none', fillgaps='interpolation', ...){
     #, get_windspeed=FALSE,
     # get_airpressure=FALSE){
-
-    #### format and prepare data for metabolism modeling
 
     # type is one of "bayes" or "mle"
     # model is one of "streamMetabolizer" or "BASE"
     # interval is the desired gap between successive observations. should be a
         # multiple of your sampling interval.
+    # rm_flagged is a list containing some combination of 'Bad Data',
+        # 'Questionable', or 'Interesting'. Values corresponding to flags of
+        # the specified type(s) will be replaced with NA, then interpolated
+        # if fillgaps is not 'none'. rm_flagged can also be set to 'none' to
+        # retain all flag information.
     # fillgaps must be one of the imputation methods available to
         # imputeTS::na.seasplit or 'none'
     # ... passes additional arguments to na.seasplit
@@ -164,10 +173,23 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         stop(paste0("fillgaps must be one of 'interpolation', 'locf', 'mean', ",
             "'random', 'kalman', 'ma', or 'none'"))
     }
+    if(any(! rm_flagged %in% list('Bad Data','Questionable','Interesting')) &
+        any(rm_flagged != 'none')){
+        stop(paste0("rm_flagged must either be 'none' or a list containing any",
+            " of: 'Bad Data', 'Questionable', 'Interesting'."))
+    }
 
     #### Format data for models
     cat(paste("Formatting data for ",model,".\n", sep=""))
     dd = d$data
+
+    #remove flagged data if desired
+    if(any(rm_flagged != 'none')){
+        flags_to_remove = unique(unlist(rm_flagged))
+        dd = dd[! dd$flagtype %in% flags_to_remove,]
+    }
+
+    dd = subset(dd, select=-c(flagtype, flagcomment))
 
     # Use USGS level and discharge if missing local versions
     if("USGSLevel_m" %in% dd$variable && !"Level_m" %in% dd$variable){
