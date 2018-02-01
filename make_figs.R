@@ -34,29 +34,40 @@ model_type = "bayes"
 model_name = "streamMetabolizer"
 fillgaps='interpolation'
 interval='15 min'
-site_code = "AZ_LV"; start_date = "2017-07-07"; end_date = "2017-12-25"
+#done, ##problem
+##site_code = "PR_QS"; start_date = "2014-03-10"; end_date = '2015-03-10'#"2017-12-20"
+site_code = "AZ_LV"; start_date = "2017-08-07"; end_date = "2017-12-25" #sd 2017-07-07 but no o2
 site_code = "AZ_OC"; start_date = "2016-11-13"; end_date = "2017-12-03"
 site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
-site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
+##site_code = "NC_UEno"; start_date = "2016-07-12"; end_date = "2017-08-30"
+##site_code = "NC_Stony"; start_date = "2016-06-30"; end_date = "2017-08-09"
+##site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
+##site_code = "NC_UNHC"; start_date = "2016-07-12"; end_date = "2017-08-30"
+##site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
     flags=TRUE, token=NULL)
 # head(streampulse_data$data)
 # dim(streampulse_data$data)
-# source('~/git/streampulse/model/sp_functions.R')
-# source('~/git/streampulse/model/gapfill_functions.R')
+source('~/git/streampulse/model/sp_functions.R')
+source('~/git/streampulse/model/gapfill_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     model=model_name, interval=interval,
-    rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps)
+    rm_flagged='none', fillgaps=fillgaps)
+    # rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps)
 
 plot(fitdata$DO.sat, type='l')
+plot(fitdata$DO.obs, type='l')
+plot(fitdata$depth, type='l')
+plot(fitdata$temp.water, type='l')
+plot(fitdata$discharge, type='l')
+fitdata$depth[fitdata$depth <= 0] = 0.00001
 # plot(fitdata$DO.sat, type='l', xlim=c(3625,3645))
 fitdata$DO.obs[3798:3897] = 11
 fitdata$DO.sat[3811:3835] = mean(fitdata$DO.sat)
 # fitdata$DO.obs[(3798-187):(3897-190)] = 11
 fitdata$DO.sat[(3811-187):(3835-190)] = mean(fitdata$DO.sat)
 # fitdata$DO.sat[0:200] = 10
-fitdata$depth[fitdata$depth < 0] = 0.00001
 plot(fitdata$depth, type='l')
 
 modelfit = fit_metabolism(fitdata)
@@ -67,15 +78,13 @@ modname <- mm_name(type='bayes', pool_K600='binned',
     err_obs_iid=TRUE, err_proc_acor=FALSE, err_proc_iid=TRUE,
     ode_method = 'trapezoid', deficit_src='DO_mod', engine='stan')
 modspecs <- specs(modname)
-
 addis = tapply(log(fitdata$discharge),
     substr(fitdata$solar.time,1,10), mean)
 modspecs$K600_lnQ_nodes_centers = seq(from=min(addis),
     to=max(addis), length.out=7)
-
 modelfit <- metab(specs = modspecs, data = fitdata)
 
-# saveRDS(modelfit, paste('~/Dropbox/streampulse/data/models/model_objects/',
+saveRDS(modelfit, paste('~/Desktop/untracked/sm_out/',
     site_code, start_date, end_date, model_type, model_name,
     substr(interval,1,2), fillgaps, sep='_'))
 
