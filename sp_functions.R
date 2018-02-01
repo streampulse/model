@@ -188,10 +188,12 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     cat(paste("Formatting data for ",model,".\n", sep=""))
     dd = d$data
 
-    #remove flagged data if desired
+    #remove (replace with NA) flagged data if desired
     if(any(rm_flagged != 'none')){
         flags_to_remove = unique(unlist(rm_flagged))
-        dd = dd[! dd$flagtype %in% flags_to_remove,]
+        dd$value[dd$flagtype %in% flags_to_remove] = NA
+    }
+    if('flagtype' %in% colnames(dd)){
         dd = subset(dd, select=-c(flagtype, flagcomment))
     }
 
@@ -272,7 +274,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     if("Light_PAR" %in% vd){ # fill in with observations if available
         dd$light[!is.na(dd$Light_PAR)] = dd$Light_PAR[!is.na(dd$Light_PAR)]
     }else{
-      message("Estimating PAR based on location and date.")
+      cat("Estimating PAR based on location and date.\n")
     }
 
     # impute missing data. code found in gapfill_functions.R
@@ -311,7 +313,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
                         'either DO sat (mgL) and water temp (C) OR air ',
                         'pressure (kPa).'))
                 }
-                message('Modeling DO.sat based on water temperature and ',
+                cat('Modeling DO.sat based on water temperature and ',
                     'air pressure.\n')
                 dd$DO.sat = LakeMetabolizer::o2.at.sat.base(temp=dd$temp.water,
                     baro=dd$AirPres_kPa*10, salinity=0, model='garcia-benson')

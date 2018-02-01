@@ -50,13 +50,14 @@ start_date = "2016-09-30"
 end_date = "2016-12-30"
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
-    flags=F, token=NULL)
+    flags=TRUE, token=NULL)
 head(streampulse_data$data)
 dim(streampulse_data$data)
 source('~/git/streampulse/model/sp_functions.R')
 source('~/git/streampulse/model/gapfill_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     model=model_name, interval=interval,
+    # rm_flagged='none', fillgaps=fillgaps)
     rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps)
 
 plot(fitdata$DO.sat, type='l')
