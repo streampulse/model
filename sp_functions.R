@@ -208,6 +208,13 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     dd = tidyr::spread(dd, variable, value) # spread out data
     md = d$sites # metadata
 
+    if('Depth_m' %in% vd){
+        if(any(dd$Depth_m <= 0)){
+            warning('Depth values <= 0 detected. Replacing with 0.000001.')
+            dd$Depth_m[dd$Depth_m <= 0] = 0.000001
+        }
+    }
+
     # check for consistent sample interval
     run_lengths = rle(diff(as.numeric(dd$DateTime_UTC)))
     if(length(run_lengths$lengths) != 1){
@@ -243,22 +250,6 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     alldates = data.frame(DateTime_UTC=seq.POSIXt(dd[1,1], dd[nrow(dd),1],
         by=interval))
     dd = left_join(alldates, dd, by='DateTime_UTC')
-
-    # acquire additional variables if desired
-    # if(get_windspeed || get_airpressure){
-    #
-    #     vars = character()
-    #     if(get_windspeed) vars = append(vars, 'windspeed')
-    #     if(get_airpressure) vars = append(vars, 'airpressure')
-    #
-    #     additional_vars = retrieve_pressure_wind(vars=vars, years=years)
-    #     dd = left_join(dd, additional_vars, by='DateTime_UTC')
-    #
-    #     # linearly interpolate missing values for wind speed and air pressure
-    #     dd$wind_speed = approx(x=dd$wind_speed, xout=which(is.na(dd$wind_speed)))$y
-    #     dd$air_pressure = approx(x=dd$air_pressure,
-    #         xout=which(is.na(dd$air_pressure)))$y
-    # }
 
     # calculate/define model variables
     dd$solar.time = suppressWarnings(streamMetabolizer::convert_UTC_to_solartime(

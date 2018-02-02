@@ -36,15 +36,15 @@ model_name = "streamMetabolizer"
 fillgaps='interpolation'
 interval='15 min'
 #site_code = "AZ_LV"; start_date = "2017-08-07"; end_date = "2017-12-25"
-site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03"
-#site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
+# site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03"
+# site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
 site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
     flags=TRUE, token=NULL)
 # head(streampulse_data$data)
 # dim(streampulse_data$data)
-# source('~/git/streampulse/model/sp_functions.R')
+source('~/git/streampulse/model/sp_functions.R')
 # source('~/git/streampulse/model/gapfill_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     model=model_name, interval=interval,
@@ -58,10 +58,28 @@ plot(fitdata$DO.obs, type='l')
 plot(fitdata$DO.obs, type='l', xlim=c((3798-191),(3897-186)), xaxs='i')
 fitdata$DO.obs[(3798-191):(3897-186)] = 11
 
-fitdata$depth[fitdata$depth <= 0] = 0.00001
-plot(fitdata$depth, type='l')
+plotvars = colnames(fitdata)[! colnames(fitdata) %in% c('solar.time')]
+pdf(width=5, height=9,
+    file=paste0('~/Desktop/untracked/sm_figs/input_',
+    site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
+par(mfrow=c(length(plotvars),1), mar=c(0,0,0,0), oma=c(4,4,.5,.5))
+t = as.Date(fitdata$solar.time)
+for(i in plotvars){
+    plot(fitdata[,i], type='l', xlab='', xaxt='n', xaxs='i', las=2)
+    mtext(i, 2, 2.5)
+    if(i == plotvars[length(plotvars)]){
+        yearstarts = match(unique(substr(t,1,4)), substr(t,1,4))
+        monthstarts = match(unique(substr(t,1,7)), substr(t,1,7))
+        axis(1, yearstarts, substr(t[yearstarts],1,4), line=1, tick=FALSE)
+        axis(1, monthstarts, substr(t[monthstarts],6,7))
+    }
+}
+dev.off()
 
 modelfit = fit_metabolism(fitdata)
+
+max(modelfit@fit$daily$K600_daily_mean, na.rm=TRUE)
+plot(density(modelfit@fit$daily$K600_daily_mean, na.rm=TRUE))
 
 # class(fitdata) = "data.frame"
 # engine = 'stan'; pool_K600='binned'; proc_err = TRUE
@@ -81,8 +99,6 @@ saveRDS(modelfit, paste('~/Desktop/untracked/sm_out/fit',
     # model_type, model_name, substr(interval,1,2), fillgaps, sep='_'))
 modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_NC_Eno_2016-07-11_2017-08-30_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
 
-predictions = predict_metabolism(modelfit)
-
 #check daiy k-er correlation
 daily_er = modelfit@fit$daily$ER_daily_mean
 daily_k = modelfit@fit$daily$K600_daily_mean
@@ -90,6 +106,12 @@ plot(daily_k, daily_er)
 daily_k[is.na(daily_k)] = mean(daily_k, na.rm=TRUE)
 daily_er[is.na(daily_er)] = mean(daily_er, na.rm=TRUE)
 cor(daily_k, daily_er)
+
+predictions = predict_metabolism(modelfit)
+
+saveRDS(predictions, paste('~/Desktop/untracked/sm_out/predictions',
+    site_code, start_date, end_date,
+    'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
 
 #plot ####
 # ymin = min(c(predictions$ER,predictions$GPP), na.rm=TRUE)
@@ -176,7 +198,7 @@ diag_plots = function (ts, date_var, gpp_var, er_var){
     cumulative_func(ts_full, gpp_var, er_var)
 }
 pdf(width=7, height=7,
-    file=paste0('~/Desktop/untracked/sm_figs/plots_',
+    file=paste0('~/Desktop/untracked/sm_figs/output_',
     site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
 diag_plots(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
 dev.off()
