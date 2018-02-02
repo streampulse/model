@@ -35,20 +35,29 @@ model_type = "bayes"
 model_name = "streamMetabolizer"
 fillgaps='interpolation'
 interval='15 min'
-#site_code = "AZ_LV"; start_date = "2017-08-07"; end_date = "2017-12-25"
-# site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03"
-# site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
-site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
+#done, ##problem
+##site_code = "PR_QS"; start_date = "2014-03-10"; end_date = '2015-03-10'#"2017-12-20"
+site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
+#site_code = "AZ_LV"; start_date = "2017-08-07"; end_date = "2017-12-25" #sd 2017-07-07 but no o2
+#site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03" #sd 11-13
+#site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
+##site_code = "NC_UEno"; start_date = "2016-07-12"; end_date = "2017-08-30"
+##site_code = "NC_Stony"; start_date = "2016-06-30"; end_date = "2017-08-09"
+##site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
+##site_code = "NC_UNHC"; start_date = "2016-07-12"; end_date = "2017-08-30"
+##site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
     flags=TRUE, token=NULL)
-# head(streampulse_data$data)
+head(streampulse_data$data)
+unique(streampulse_data$data$variable)
 # dim(streampulse_data$data)
-source('~/git/streampulse/model/sp_functions.R')
+# source('~/git/streampulse/model/sp_functions.R')
 # source('~/git/streampulse/model/gapfill_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     model=model_name, interval=interval,
-    rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps)
+    rm_flagged='none', fillgaps=fillgaps)
+    # rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps)
 
 plot(fitdata$DO.sat, type='l')
 plot(fitdata$DO.sat, type='l', xlim=c(3625,3645), xaxs='i')
@@ -97,7 +106,7 @@ saveRDS(modelfit, paste('~/Desktop/untracked/sm_out/fit',
     site_code, start_date, end_date,
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
     # model_type, model_name, substr(interval,1,2), fillgaps, sep='_'))
-modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_NC_Eno_2016-07-11_2017-08-30_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
+modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_LV_2017-08-07_2017-12-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
 
 #check daiy k-er correlation
 daily_er = modelfit@fit$daily$ER_daily_mean
@@ -150,20 +159,6 @@ processing_func = function (ts, date_var, gpp_var, er_var) {
     return(ts_full)
 }
 p = processing_func(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
-diag_plots = function (ts, date_var, gpp_var, er_var){
-    ts_full <- processing_func(ts, date_var, gpp_var, er_var)
-    layout(matrix(c(1, 1, 3, 1, 1, 4, 2, 2, 5), 3, 3, byrow = TRUE),
-        widths = c(1, 1, 2))
-    par(cex = 0.6)
-    par(mar = c(3, 4, 0.1, 0.1), oma = c(3, 0.5, 0.5, 0.5))
-    par(tcl = -0.25)
-    par(mgp = c(2, 0.6, 0))
-    kernel_func(ts_full, gpp_var, er_var)
-    par(mar = c(0, 4, 2, 0.1))
-    season_ts_func(ts_full, gpp_var, er_var)
-    par(mar = c(0, 4, 0, 0.1))
-    cumulative_func(ts_full, gpp_var, er_var)
-}
 
 # pdf(width=5, height=9,
 #     file=paste('~/Desktop/untracked/sm_figs/cumulative',

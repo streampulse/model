@@ -62,79 +62,37 @@ sp_flags = function(d){
 
 #verify that datetimes from noaa are in utc and watch out for NA values (-9.96921e+36f)
 # vars=c('windspeed', 'airpressure'); years = 2017
-retrieve_pressure_wind = function(vars, years){
-
-    # years = unique(c(substr(start_date,1,4), substr(end_date,1,4)))
+# d = d2
+retrieve_air_pressure = function(sites, dd){
 
     #format site data for use with geoknife package
-    station = as.data.frame(t(d$sites[,c('lon','lat')]))
+    station = as.data.frame(t(sites[,c('lon','lat')]))
     station = simplegeom(station)
 
-    if('windspeed' %in% vars){
+    years = unique(substr(dd$DateTime_UTC, 1, 4))
+    cat('Missing DO saturation and/or water temp, so acquiring air pressure',
+        'data for', length(years),
+        'year(s). Each year may take a few minutes.\n')
 
-        #setup and initializing
-        components = c('vwnd', 'uwnd')
-        datetime = .POSIXct(character()) #initialize empty POSIXct vector
-        vwnd = uwnd = numeric()
-        message(paste('Acquiring wind speed data for', length(years),
-            'years. Each year takes a few minutes.'))
+    #retrieve air pressure data from noaa
+    pres = data.frame(datetime=.POSIXct(character()), pres=numeric())
+    for(i in 1:length(years)){
 
-        #get data
-        for(i in 1:length(years)){
-            for(j in 1:length(components)){
+        fabric = webdata(url=paste0('https://www.esrl.noaa.gov/psd/th',
+            'redds/dodsC/Datasets/ncep.reanalysis/surface/pres.sfc.',
+            years[i], '.nc'), variables='pres')
+        noaa_job = geoknife(stencil=station, fabric=fabric, wait=TRUE)
+        noaa_data = result(noaa_job, with.units=TRUE)
 
-                #get u and v components of windspeed from noaa
-                fabric = webdata(url=paste0('https://www.esrl.noaa.gov/psd/th',
-                    'redds/dodsC/Datasets/ncep.reanalysis/surface/',
-                    components[j], '.sig995.', years[i], '.nc'),
-                    variables=components[j])
-                noaa_job = geoknife(stencil=station, fabric=fabric,
-                    wait=TRUE)
-                noaa_data = result(noaa_job, with.units=TRUE)
+        pres = rbind(pres, noaa_data[,c('DateTime','1')])
 
-                if(j==1) datetime = append(datetime, noaa_data$DateTime)
-                assign(components[j], append(get(components[j]), noaa_data$`1`))
-                # -9.96921e+36f #missing data flagged with this value
-            }
-        }
-
-        wnd = data.frame(datetime, vwnd, uwnd) %>%
-            mutate(wind_speed=sqrt(uwnd^2 + vwnd^2)) %>%
-            select(datetime, wind_speed)
-        # attr(wnd$datetime, 'tzone') = 'UTC'
+        cat('Year', i, 'complete.\n')
     }
 
-    if('airpressure' %in% vars){ #same thing as above, but simpler
+    pres = data.frame(pres)
 
-        # datetime2 = .POSIXct(character(), tz='GMT')
-        # pres = numeric()
-        pres = data.frame(datetime=.POSIXct(character()), pres=numeric())
-        message(paste('Acquiring air pressure data for', length(years),
-            'years. Each year takes a few minutes.'))
-
-        for(i in 1:length(years)){
-
-            fabric = webdata(url=paste0('https://www.esrl.noaa.gov/psd/th',
-                'redds/dodsC/Datasets/ncep.reanalysis/surface/pres.sfc.',
-                years[i], '.nc'), variables='pres')
-            noaa_job = geoknife(stencil=station, fabric=fabric, wait=TRUE)
-            noaa_data = result(noaa_job, with.units=TRUE)
-
-            pres = rbind(pres, noaa_data[,c('DateTime','1')])
-        }
-
-        pres = data.frame(pres)
-    }
-
-    if('windspeed' %in% vars && 'airpressure' %in% vars){
-        df_out = merge(pres, wnd, by.x='DateTime', by.y='datetime') %>%
-            mutate(air_pressure=X1, DateTime_UTC=DateTime) %>% select(-X1)
-    } else {
-        if(vars == 'windspeed'){
-            df_out = wnd
-        } else df_out = pres %>%
-                mutate(air_pressure = X1, DateTime_UTC=DateTime) %>% select(-X1)
-    }
+    df_out = pres %>% mutate(AirPres_kPa = X1 / 1000,
+            DateTime_UTC=DateTime) %>% select(AirPres_kPa, DateTime_UTC)
 
     return(df_out)
 }
@@ -251,6 +209,25 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         by=interval))
     dd = left_join(alldates, dd, by='DateTime_UTC')
 
+    #acquire air pressure data if necessary
+    if((all(! c('satDO_mgL','DOsat_pct') %in% vd) | ! 'WaterTemp_C' %in% vd) &
+        ! 'AirPres_kPa' %in% vd){
+
+        airpres <- try(retrieve_air_pressure(d$sites, dd), silent=TRUE)
+        if(class(airpres)=='try-error') {
+            warning(paste('Failed to retrieve air pressure data.'))
+        } else {
+            dd = left_join(dd, airpres, by='DateTime_UTC')
+            dd$AirPres_kPa = na.approx(dd$AirPres_kPa, na.rm=FALSE, rule=2)
+
+            # linearly interpolate missing values for wind speed and air pressure
+            # dd$wind_speed = approx(x=dd$wind_speed, xout=which(is.na(dd$wind_speed)))$y
+            # dd$AirPres_kPa = approx(x=dd$AirPres_kPa,
+            #     xout=which(is.na(dd$AirPres_kPa)))$y
+        }
+
+    }
+
     # calculate/define model variables
     dd$solar.time = suppressWarnings(streamMetabolizer::convert_UTC_to_solartime(
         date.time=dd$DateTime_UTC, longitude=md$lon[1], time.type="mean solar"))
@@ -278,9 +255,15 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     if("Discharge_m3s" %in% vd) dd$discharge = dd$Discharge_m3s
     if("Depth_m" %in% vd){
         dd$depth = dd$Depth_m
-    }else{ # get average depth from discharge
-        dd$depth = calc_depth(dd$discharge)
+    } else { # get average depth from discharge
+        if("Discharge_m3s" %in% vd){
+            dd$depth = calc_depth(dd$discharge)
+        } else {
+            stop(paste('Missing discharge and depth data. Not enough',
+                'information to proceed.'))
+        }
     }
+
 
     # kPa to atm
     if("AirPres_kPa" %in% vd) dd$atmo.pressure = dd$AirPres_kPa / 101.325
