@@ -157,7 +157,7 @@ saveRDS(predictions, paste('mod_objects/predictions',
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
 
 #source functions from Phil's forthcoming MetaboPlots package
-source('phils_package_prerelease.R')
+source('MetaboPlots_prerelease.R')
 
 #plot metabolism, cumulative GPP-ER, GPP x ER kernel density
 #uncomment lines below to save plots. note that existing plots will be
