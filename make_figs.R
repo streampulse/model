@@ -1,4 +1,4 @@
-rm(list=ls()); cat('\014')
+rm(list=ls()); cat('\014') #clear environment and console
 
 #setup ####
 #install packages from CRAN if necessary
@@ -41,16 +41,24 @@ interval='15 min'
 ##site_code = "PR_QS"; start_date = "2014-03-10"; end_date = '2015-03-10'#ed "2017-12-20"
 ##site_code = "RI_CorkBrk"; start_date = "2015-06-23"; end_date = '2016-06-22'#ed "2017-01-03", sd=2014-06-23
 #site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
-# site_code = "CT_HUBB"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
+#site_code = "CT_HUBB"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
 ##site_code = "CT_FARM"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
 #site_code = "CT_Unio"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
-# site_code = "VT_Pass"; start_date = "2015-06-26"; end_date = '2016-06-25' #ed 2016-10-27
-# site_code = "VT_SLPR"; start_date = "2015-06-05"; end_date = '2016-11-16' #ed 2016-10-16
-# site_code = "VT_POPE"; start_date = "2015-06-03"; end_date = '2016-06-02' #ed 2016-11-11
-# site_code = "VT_MOOS"; start_date = "2015-06-03"; end_date = '2016-11-11' #ed 2016-11-11
+#site_code = "VT_Pass"; start_date = "2015-06-26"; end_date = '2016-06-25' #ed 2016-10-27
+#site_code = "VT_POPE"; start_date = "2015-06-03"; end_date = '2016-06-02' #ed 2016-11-11
+#site_code = "VT_MOOS"; start_date = "2015-06-03"; end_date = '2016-11-11' #ed 2016-11-11
+##site_code = "PR_Icacos"; start_date = "2016-06-09"; end_date = '2016-12-15'
+#site_code = "CT_STIL"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
+#site_code = "MD_GFVN"; start_date = "2016-02-18"; end_date = '2016-11-19'
+#site_code = "MD_GFCP"; start_date = "2016-05-07"; end_date = '2016-11-19'
+#site_code = "MD_GFGB"; start_date = "2016-02-19"; end_date = '2016-11-11'
+#site_code = "MD_DRKR"; start_date = "2016-02-18"; end_date = '2016-11-19'
+#site_code = "MD_POBR"; start_date = "2016-02-19"; end_date = '2016-11-19'
+#site_code = "MD_BARN"; start_date = "2016-02-19"; end_date = '2016-11-19'
+#site_code = "VT_SLPR"; start_date = "2015-06-03"; end_date = '2016-06-03' #ed 2016-11-11
 #site_code = "AZ_LV"; start_date = "2017-08-07"; end_date = "2017-12-25" #sd 2017-07-07 but no o2
 #site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03" #sd 11-13
-# site_code = "AZ_SC"; start_date = "2017-02-08"; end_date = "2017-03-28"
+#site_code = "AZ_SC"; start_date = "2017-02-08"; end_date = "2017-03-28"
 ##site_code = "AZ_WB"; start_date = "2017-08-04"; end_date = "2017-12-27"
 #site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
 ##site_code = "NC_UEno"; start_date = "2016-07-12"; end_date = "2017-08-30"
@@ -101,7 +109,7 @@ dev.off()
 
 modelfit = fit_metabolism(fitdata)
 
-max(modelfit@fit$daily$K600_daily_mean, na.rm=TRUE)
+max(modelfit@fit$daily$K600_daily_mean, na.rm=TRUE) #shoudnt be over 90
 plot(density(modelfit@fit$daily$K600_daily_mean, na.rm=TRUE))
 
 # class(fitdata) = "data.frame"
@@ -121,6 +129,7 @@ saveRDS(modelfit, paste('~/Desktop/untracked/sm_out/fit',
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
     # model_type, model_name, substr(interval,1,2), fillgaps, sep='_'))
 # modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_SC_2017-02-08_2017-03-28_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
+# modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_LV_2017-08-07_2017-12-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
 
 #check daiy k-er correlation
 daily_er = modelfit@fit$daily$ER_daily_mean
