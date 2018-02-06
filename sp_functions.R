@@ -264,7 +264,6 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         }
     }
 
-
     # kPa to atm
     if("AirPres_kPa" %in% vd) dd$atmo.pressure = dd$AirPres_kPa / 101.325
     if(model=="streamMetabolizer"){
@@ -282,7 +281,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
                 dd$DO.sat = dd$DO.obs / (dd$DOsat_pct*ff)
             } else {
                 if(!all(c("temp.water","AirPres_kPa") %in% colnames(dd))){
-                    stop(paste('Insufficient data to fit this model. Need ',
+                    stop(paste('Insufficient data to fit this model. Need',
                         'either DO sat (mgL) and water temp (C) OR air ',
                         'pressure (kPa).'))
                 }

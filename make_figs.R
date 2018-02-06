@@ -1,4 +1,4 @@
-rm(list=ls()); cat('\014')
+rm(list=ls()); cat('\014') #clear environment and console
 
 #setup ####
 #install packages from CRAN if necessary
@@ -37,7 +37,16 @@ fillgaps='interpolation'
 interval='15 min'
 #done, ##problem
 ##site_code = "PR_QS"; start_date = "2014-03-10"; end_date = '2015-03-10'#"2017-12-20"
-site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
+##site_code = "PR_Icacos"; start_date = "2016-06-09"; end_date = '2016-12-15'
+#site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
+#site_code = "CT_STIL"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
+#site_code = "MD_GFVN"; start_date = "2016-02-18"; end_date = '2016-11-19'
+# site_code = "MD_GFCP"; start_date = "2016-05-07"; end_date = '2016-11-19'
+# site_code = "MD_GFGB"; start_date = "2016-02-19"; end_date = '2016-11-11'
+# site_code = "MD_DRKR"; start_date = "2016-02-18"; end_date = '2016-11-19'
+# site_code = "MD_POBR"; start_date = "2016-02-19"; end_date = '2016-11-19'
+site_code = "MD_BARN"; start_date = "2016-02-19"; end_date = '2016-11-19'
+# site_code = "VT_SLPR"; start_date = "2015-06-03"; end_date = '2016-06-03' #ed 2016-11-11
 #site_code = "AZ_LV"; start_date = "2017-08-07"; end_date = "2017-12-25" #sd 2017-07-07 but no o2
 #site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03" #sd 11-13
 #site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
@@ -59,13 +68,13 @@ fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     rm_flagged='none', fillgaps=fillgaps)
     # rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps)
 
-plot(fitdata$DO.sat, type='l')
-plot(fitdata$DO.sat, type='l', xlim=c(3625,3645), xaxs='i')
-fitdata$DO.sat[3622:3645] = mean(fitdata$DO.sat)
-
-plot(fitdata$DO.obs, type='l')
-plot(fitdata$DO.obs, type='l', xlim=c((3798-191),(3897-186)), xaxs='i')
-fitdata$DO.obs[(3798-191):(3897-186)] = 11
+# plot(fitdata$DO.sat, type='l')
+# plot(fitdata$DO.sat, type='l', xlim=c(3625,3645), xaxs='i')
+# fitdata$DO.sat[3622:3645] = mean(fitdata$DO.sat)
+#
+# plot(fitdata$DO.obs, type='l')
+# plot(fitdata$DO.obs, type='l', xlim=c((3798-191),(3897-186)), xaxs='i')
+# fitdata$DO.obs[(3798-191):(3897-186)] = 11
 
 plotvars = colnames(fitdata)[! colnames(fitdata) %in% c('solar.time')]
 pdf(width=5, height=9,
@@ -87,7 +96,7 @@ dev.off()
 
 modelfit = fit_metabolism(fitdata)
 
-max(modelfit@fit$daily$K600_daily_mean, na.rm=TRUE)
+max(modelfit@fit$daily$K600_daily_mean, na.rm=TRUE) #shoudnt be over 90
 plot(density(modelfit@fit$daily$K600_daily_mean, na.rm=TRUE))
 
 # class(fitdata) = "data.frame"
@@ -106,7 +115,7 @@ saveRDS(modelfit, paste('~/Desktop/untracked/sm_out/fit',
     site_code, start_date, end_date,
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
     # model_type, model_name, substr(interval,1,2), fillgaps, sep='_'))
-modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_LV_2017-08-07_2017-12-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
+# modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_LV_2017-08-07_2017-12-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
 
 #check daiy k-er correlation
 daily_er = modelfit@fit$daily$ER_daily_mean
