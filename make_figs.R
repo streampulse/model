@@ -30,22 +30,36 @@ for(i in c(package_list)) library(i, character.only=TRUE)
 source('~/git/streampulse/model/gapfill_functions.R')
 source('~/git/streampulse/model/sp_functions.R')
 
+#choices ####
+
 model_type = "bayes"
 # model_type = "mle"
 model_name = "streamMetabolizer"
 fillgaps='interpolation'
 interval='15 min'
 #done, ##problem
-##site_code = "PR_QS"; start_date = "2014-03-10"; end_date = '2015-03-10'#"2017-12-20"
-site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
+##site_code = "PR_QS"; start_date = "2014-03-10"; end_date = '2015-03-10'#ed "2017-12-20"
+##site_code = "RI_CorkBrk"; start_date = "2015-06-23"; end_date = '2016-06-22'#ed "2017-01-03", sd=2014-06-23
+#site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
+# site_code = "CT_HUBB"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
+##site_code = "CT_FARM"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
+#site_code = "CT_Unio"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
+# site_code = "VT_Pass"; start_date = "2015-06-26"; end_date = '2016-06-25' #ed 2016-10-27
+# site_code = "VT_SLPR"; start_date = "2015-06-05"; end_date = '2016-11-16' #ed 2016-10-16
+# site_code = "VT_POPE"; start_date = "2015-06-03"; end_date = '2016-06-02' #ed 2016-11-11
+# site_code = "VT_MOOS"; start_date = "2015-06-03"; end_date = '2016-11-11' #ed 2016-11-11
 #site_code = "AZ_LV"; start_date = "2017-08-07"; end_date = "2017-12-25" #sd 2017-07-07 but no o2
 #site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03" #sd 11-13
+# site_code = "AZ_SC"; start_date = "2017-02-08"; end_date = "2017-03-28"
+##site_code = "AZ_WB"; start_date = "2017-08-04"; end_date = "2017-12-27"
 #site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
 ##site_code = "NC_UEno"; start_date = "2016-07-12"; end_date = "2017-08-30"
 ##site_code = "NC_Stony"; start_date = "2016-06-30"; end_date = "2017-08-09"
 ##site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
 ##site_code = "NC_UNHC"; start_date = "2016-07-12"; end_date = "2017-08-30"
 ##site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
+
+#run ####
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
     flags=TRUE, token=NULL)
@@ -59,13 +73,13 @@ fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     rm_flagged='none', fillgaps=fillgaps)
     # rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps)
 
-plot(fitdata$DO.sat, type='l')
-plot(fitdata$DO.sat, type='l', xlim=c(3625,3645), xaxs='i')
-fitdata$DO.sat[3622:3645] = mean(fitdata$DO.sat)
-
-plot(fitdata$DO.obs, type='l')
-plot(fitdata$DO.obs, type='l', xlim=c((3798-191),(3897-186)), xaxs='i')
-fitdata$DO.obs[(3798-191):(3897-186)] = 11
+# plot(fitdata$DO.sat, type='l')
+# plot(fitdata$DO.sat, type='l', xlim=c(3625,3645), xaxs='i')
+# fitdata$DO.sat[3622:3645] = mean(fitdata$DO.sat)
+#
+# plot(fitdata$DO.obs, type='l')
+# plot(fitdata$DO.obs, type='l', xlim=c((3798-191),(3897-186)), xaxs='i')
+# fitdata$DO.obs[(3798-191):(3897-186)] = 11
 
 plotvars = colnames(fitdata)[! colnames(fitdata) %in% c('solar.time')]
 pdf(width=5, height=9,
@@ -106,7 +120,7 @@ saveRDS(modelfit, paste('~/Desktop/untracked/sm_out/fit',
     site_code, start_date, end_date,
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
     # model_type, model_name, substr(interval,1,2), fillgaps, sep='_'))
-modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_LV_2017-08-07_2017-12-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
+# modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_SC_2017-02-08_2017-03-28_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
 
 #check daiy k-er correlation
 daily_er = modelfit@fit$daily$ER_daily_mean
@@ -193,7 +207,7 @@ diag_plots = function (ts, date_var, gpp_var, er_var){
     cumulative_func(ts_full, gpp_var, er_var)
 }
 pdf(width=7, height=7,
-    file=paste0('~/Desktop/untracked/sm_figs/output_',
+    file=paste0('~/Desktop/untracked/sm_figs/output2_',
     site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
 diag_plots(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
 dev.off()
