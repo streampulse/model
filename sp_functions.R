@@ -285,7 +285,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
                         'either DO sat (mgL) and water temp (C) OR air ',
                         'pressure (kPa).'))
                 }
-                cat('Modeling DO.sat based on water temperature and ',
+                cat('Modeling DO.sat based on water temperature and',
                     'air pressure.\n')
                 dd$DO.sat = LakeMetabolizer::o2.at.sat.base(temp=dd$temp.water,
                     baro=dd$AirPres_kPa*10, salinity=0, model='garcia-benson')

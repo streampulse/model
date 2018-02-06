@@ -12,12 +12,12 @@ setwd('MODIFY_PATH_HERE/streampulse_model_runs_round1') #set working directory
 #install/update streamMetabolizer ####
 
 #install latest version if you don't have streamMetabolizer already
-install.packages("streamMetabolizer", dependencies=TRUE,
-    repos=c("https://owi.usgs.gov/R","https://cran.rstudio.com"))
+install.packages('streamMetabolizer', dependencies=TRUE,
+    repos=c('https://owi.usgs.gov/R','https://cran.rstudio.com'))
 
 #update streamMetabolizer if you aready have it
-update.packages(oldPkgs=c("streamMetabolizer","unitted"), dependencies=TRUE,
-    repos=c("https://owi.usgs.gov/R", "https://cran.rstudio.com"))
+update.packages(oldPkgs=c('streamMetabolizer','unitted'), dependencies=TRUE,
+    repos=c('https://owi.usgs.gov/R', 'https://cran.rstudio.com'))
 
 #load packages and StreamPULSE functions ####
 
@@ -34,17 +34,17 @@ library(geoknife) #for acquiring air pressure if necessary
 # library(coda) # only required for BASE
 
 # This sources our StreamPULSE functions from GitHub (R package coming soon)
-sp_functions = GET("https://raw.githubusercontent.com/streampulse/model/master/sp_functions.R")
-eval(parse(text=content(sp_functions, as="text", encoding="UTF-8")), envir=.GlobalEnv)
+sp_functions = GET('https://raw.githubusercontent.com/streampulse/model/master/sp_functions.R')
+eval(parse(text=content(sp_functions, as='text', encoding='UTF-8')), envir=.GlobalEnv)
 
 # Source gapfilling functions
-gapfill_functions = GET("https://raw.githubusercontent.com/streampulse/model/master/gapfill_functions.R")
-eval(parse(text = content(gapfill_functions, as="text", encoding="UTF-8")),
+gapfill_functions = GET('https://raw.githubusercontent.com/streampulse/model/master/gapfill_functions.R')
+eval(parse(text = content(gapfill_functions, as='text', encoding='UTF-8')),
     envir= .GlobalEnv)
 
 # Source BASE functions (not needed for this script)
-# BASE_functions = GET("https://raw.githubusercontent.com/streampulse/model/master/BASE_functions.R")
-# eval(parse(text = content(BASE_functions, as="text", encoding="UTF-8")),
+# BASE_functions = GET('https://raw.githubusercontent.com/streampulse/model/master/BASE_functions.R')
+# eval(parse(text = content(BASE_functions, as='text', encoding='UTF-8')),
 #     envir= .GlobalEnv)
 
 #model setup (see https://data.streampulse.org/model for details) ####
@@ -56,25 +56,38 @@ interval = '15 min'
 
 #choose site and dates (commented sites still have issues,
 #which are detailed in notes_from_model_runs.csv).
-##site_code = "PR_QS"; start_date = "2014-03-10"; end_date = '2015-03-10'#"2017-12-20"
-##site_code = "PR_Icacos"; start_date = "2016-06-09"; end_date = '2016-12-15'
-#site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
-#site_code = "CT_STIL"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
-#site_code = "MD_GFVN"; start_date = "2016-02-18"; end_date = '2016-11-19'
-# site_code = "MD_GFCP"; start_date = "2016-05-07"; end_date = '2016-11-19'
-# site_code = "MD_GFGB"; start_date = "2016-02-19"; end_date = '2016-11-11'
-# site_code = "MD_DRKR"; start_date = "2016-02-18"; end_date = '2016-11-19'
-# site_code = "MD_POBR"; start_date = "2016-02-19"; end_date = '2016-11-19'
-# site_code = "MD_BARN"; start_date = "2016-02-19"; end_date = '2016-11-19'
-# site_code = "VT_SLPR"; start_date = "2015-06-03"; end_date = '2016-06-03' #ed 2016-11-11
-#site_code = "AZ_LV"; start_date = "2017-08-07"; end_date = "2017-12-25" #sd 2017-07-07 but no o2
-#site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03" #sd 11-13
-#site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
-##site_code = "NC_UEno"; start_date = "2016-07-12"; end_date = "2017-08-30"
-##site_code = "NC_Stony"; start_date = "2016-06-30"; end_date = "2017-08-09"
-##site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
-##site_code = "NC_UNHC"; start_date = "2016-07-12"; end_date = "2017-08-30"
-##site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
+#if full time span was not used, alternative dates are given as comments.
+
+site_code = 'AZ_LV'; start_date = '2017-08-07'; end_date = '2017-12-25' #2017-07-07 (avoiding large gap)
+site_code = 'AZ_OC'; start_date = '2016-11-15'; end_date = '2017-12-03' #2016-11-13 (avoiding outlier section)
+site_code = 'AZ_SC'; start_date = '2017-02-08'; end_date = '2017-03-28'
+#site_code = 'AZ_WB'; start_date = '2017-08-04'; end_date = '2017-12-27'
+site_code = 'CT_BUNN'; start_date = '2015-05-20'; end_date = '2016-05-20' #2016-11-15
+site_code = 'CT_HUBB'; start_date = '2015-05-20'; end_date = '2016-05-20' #2016-11-11
+site_code = 'CT_Unio'; start_date = '2015-05-20'; end_date = '2016-05-20' #2016-11-11
+site_code = 'CT_STIL'; start_date = '2015-05-20'; end_date = '2016-05-20' #2016-11-15
+#site_code = 'CT_FARM'; start_date = '2015-05-20'; end_date = '2016-05-20' #2016-11-11
+site_code = 'MD_GFVN'; start_date = '2016-02-18'; end_date = '2016-11-19'
+site_code = 'MD_GFCP'; start_date = '2016-05-07'; end_date = '2016-11-19'
+site_code = 'MD_GFGB'; start_date = '2016-02-19'; end_date = '2016-11-11'
+site_code = 'MD_DRKR'; start_date = '2016-02-18'; end_date = '2016-11-19'
+site_code = 'MD_POBR'; start_date = '2016-02-19'; end_date = '2016-11-19'
+site_code = 'MD_BARN'; start_date = '2016-02-19'; end_date = '2016-11-19'
+site_code = 'NC_Eno'; start_date = '2016-07-11'; end_date = '2017-08-30'
+#site_code = 'NC_UEno'; start_date = '2016-07-12'; end_date = '2017-08-30'
+#site_code = 'NC_Stony'; start_date = '2016-06-30'; end_date = '2017-08-09'
+#site_code = 'NC_NHC'; start_date = '2016-09-14'; end_date = '2017-09-13'
+#site_code = 'NC_UNHC'; start_date = '2016-07-12'; end_date = '2017-08-30'
+#site_code = 'NC_Mud'; start_date = '2016-07-12'; end_date = '2017-08-30'
+#site_code = 'PR_QS'; start_date = '2014-03-10'; end_date = '2015-03-10' #2017-12-20
+#site_code = 'PR_Icacos'; start_date = '2016-06-09'; end_date = '2016-12-15'
+#site_code = 'RI_CorkBrk'; start_date = '2015-06-23'; end_date = '2016-06-22' #2014-06-23; 2017-01-03
+site_code = 'VT_Pass'; start_date = '2015-06-26'; end_date = '2016-06-25' #2016-10-27
+site_code = 'VT_POPE'; start_date = '2015-06-03'; end_date = '2016-06-02' #2016-11-11
+site_code = 'VT_MOOS'; start_date = '2015-06-03'; end_date = '2016-11-11' #2016-11-11
+site_code = 'VT_SLPR'; start_date = '2015-06-03'; end_date = '2016-06-03' #2016-11-11
+site_code = 'WI_BEC'; start_date = '2017-01-26'; end_date = '2018-01-25' #2009-10-02; 2018-01-25
+site_code = 'WI_BRW'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
 
 #retrieve data from StreamPULSE database
 streampulse_data = request_data(sitecode=site_code,
@@ -112,7 +125,7 @@ for(i in plotvars){
 modelfit = fit_metabolism(fitdata)
 
 #fit model with custom parameters (mm_name, specs, metab are from streamMetabolizer)
-# class(fitdata) = "data.frame" #just a formality, execute and disregard
+# class(fitdata) = 'data.frame' #just a formality, execute and disregard
 # modname = mm_name(type='bayes', pool_K600='binned',
 #     err_obs_iid=TRUE, err_proc_acor=FALSE, err_proc_iid=TRUE,
 #     ode_method = 'trapezoid', deficit_src='DO_mod', engine='stan')
@@ -156,8 +169,10 @@ saveRDS(predictions, paste('mod_objects/predictions',
     site_code, start_date, end_date,
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
 
-#source functions from Phil's forthcoming MetaboPlots package
+#source functions from Phil's forthcoming MetaboPlots package. load dependencies
 source('MetaboPlots_prerelease.R')
+library(ks)
+library(RColorBrewer)
 
 #plot metabolism, cumulative GPP-ER, GPP x ER kernel density
 #uncomment lines below to save plots. note that existing plots will be
@@ -173,5 +188,5 @@ ymin = min(c(predictions$ER,predictions$GPP), na.rm=TRUE)
 ymax = max(c(predictions$ER,predictions$GPP), na.rm=TRUE)
 plot(predictions$GPP, type='l', ylim=c(ymin, ymax),
     main='', xlab='Date Index', ylab='g O2/m^2/d', las=1)
-lines(predictions$ER[ind], col='red')
+lines(predictions$ER, col='red')
 legend('topright', legend=c('GPP','ER'), lty=1, col=c('black','red'), bty='n')
