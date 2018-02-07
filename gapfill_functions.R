@@ -6,7 +6,7 @@ series_impute = function(x, tol, samp, algorithm, ...){
     # then replaces NAs for long runs.
     # samp is the number of samples per day
     # algorithm and ... are passed to imputeTS::na.seasplit
-
+    plot(x, type='l')
     na_locations = which(is.na(x))
     # if(length(na_locations)){
     #     x2 <<- x
@@ -14,11 +14,11 @@ series_impute = function(x, tol, samp, algorithm, ...){
     # }
     # x = x2
     # samp = samp2
-    # tol=Inf; algorithm='interpolation'
+    # tol=192; algorithm='interpolation'
 
     # message(dim(x))
     # message(dim(na_locations))
-    if(length(na_locations)){ #if NAs in x, get indices of long runs
+    if(length(na_locations) > 1){ #if NAs in x, get indices of long runs
         runs = rle2(diff(na_locations), indices=TRUE, return.list=FALSE)
         runs = runs[runs[,'values'] == 1 & runs[,'lengths'] >= tol-1, ,
             drop=FALSE]
@@ -38,7 +38,7 @@ series_impute = function(x, tol, samp, algorithm, ...){
         algorithm=algorithm, ...)))
 
     #restore NAs where there were long runs
-    if(length(na_locations)){
+    if(length(na_locations) > 1){
         imputed[long_na_run_indices] = NA
     }
 
@@ -230,6 +230,11 @@ gap_fill = function(df, maxspan_days=5, knn=3, sint, algorithm, ...){
     # df is data frame, requires one column as POSIXct date time and the
     # other columns as numeric. the order of columns does not matter.
     # int is the interval between samples
+
+    # df2 <<- df
+    # sint2 <<- sint
+    # sint = sint2; df2 = df2
+    # maxspan_days=5; knn=3; algorithm=fillgaps
 
     # check if all but one column is numeric
     if( !(length(which(sapply(df, function(x) inherits(x, "numeric")))) ==

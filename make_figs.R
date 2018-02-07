@@ -39,10 +39,10 @@ fillgaps='interpolation'
 interval='15 min'
 #done, ##problem
 ##site_code = "PR_QS"; start_date = "2014-03-10"; end_date = '2015-03-10'#ed "2017-12-20"
-##site_code = "RI_CorkBrk"; start_date = "2015-06-23"; end_date = '2016-06-22'#ed "2017-01-03", sd=2014-06-23
+site_code = "RI_CorkBrk"; start_date = "2015-06-23"; end_date = '2016-06-22'#ed "2017-01-03", sd=2014-06-23
 #site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
 #site_code = "CT_HUBB"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
-##site_code = "CT_FARM"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
+# site_code = "CT_FARM"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
 #site_code = "CT_Unio"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
 #site_code = "VT_Pass"; start_date = "2015-06-26"; end_date = '2016-06-25' #ed 2016-10-27
 #site_code = "VT_POPE"; start_date = "2015-06-03"; end_date = '2016-06-02' #ed 2016-11-11
@@ -59,13 +59,15 @@ interval='15 min'
 #site_code = "AZ_LV"; start_date = "2017-08-07"; end_date = "2017-12-25" #sd 2017-07-07 but no o2
 #site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03" #sd 11-13
 #site_code = "AZ_SC"; start_date = "2017-02-08"; end_date = "2017-03-28"
-##site_code = "AZ_WB"; start_date = "2017-08-04"; end_date = "2017-12-27"
+# site_code = "AZ_WB"; start_date = "2017-08-04"; end_date = "2017-12-27"
 #site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
 ##site_code = "NC_UEno"; start_date = "2016-07-12"; end_date = "2017-08-30"
 ##site_code = "NC_Stony"; start_date = "2016-06-30"; end_date = "2017-08-09"
 ##site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
 ##site_code = "NC_UNHC"; start_date = "2016-07-12"; end_date = "2017-08-30"
 ##site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
+# site_code = 'WI_BEC'; start_date = '2017-01-26'; end_date = '2018-01-25' #2009-10-02; 2018-01-25
+# site_code = 'WI_BRW'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
 
 #run ####
 streampulse_data = request_data(sitecode=site_code,
@@ -73,13 +75,39 @@ streampulse_data = request_data(sitecode=site_code,
     flags=TRUE, token=NULL)
 head(streampulse_data$data)
 unique(streampulse_data$data$variable)
+sum(streampulse_data$data$flagtype != '')
+# z = streampulse_data$data
+# z = z$DateTime_UTC[z$variable == 'WaterTemp_C']
+# z = z$DateTime_UTC[z$variable == 'DOsat_pct']
+# unique(substr(z, 15, 16))
+
+plotvars = unique(streampulse_data$data$variable)
+par(mfrow=c(length(plotvars),1), mar=c(0,0,0,0), oma=c(4,4,.5,.5))
+t = as.Date(sort(unique(streampulse_data$data$DateTime_UTC)))
+for(i in plotvars){
+    plot(streampulse_data$data$value[which(streampulse_data$data$variable == i)],
+        type='l', xlab='', xaxt='n', xaxs='i', las=2)
+    mtext(i, 2, 2.5)
+    if(i == plotvars[length(plotvars)]){
+        yearstarts = match(unique(substr(t,1,4)), substr(t,1,4))
+        monthstarts = match(unique(substr(t,1,7)), substr(t,1,7))
+        axis(1, yearstarts, substr(t[yearstarts],1,4), line=1, tick=FALSE)
+        axis(1, monthstarts, substr(t[monthstarts],6,7))
+    }
+}
+
+# sval = streampulse_data$data$value
+# svar = streampulse_data$data$variable
+# dis_vals = which(svar %in% c('Discharge_m3s', 'USGSDischarge_m3s'))
+# sval[dis_vals][sval[dis_vals] <= 0] = NA
+# streampulse_data$data$value = sval
+
 # dim(streampulse_data$data)
-# source('~/git/streampulse/model/sp_functions.R')
-# source('~/git/streampulse/model/gapfill_functions.R')
+source('~/git/streampulse/model/sp_functions.R')
+source('~/git/streampulse/model/gapfill_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     model=model_name, interval=interval,
-    rm_flagged='none', fillgaps=fillgaps)
-    # rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps)
+    rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps)
 
 # plot(fitdata$DO.sat, type='l')
 # plot(fitdata$DO.sat, type='l', xlim=c(3625,3645), xaxs='i')
@@ -89,10 +117,11 @@ fitdata = prep_metabolism(d=streampulse_data, type=model_type,
 # plot(fitdata$DO.obs, type='l', xlim=c((3798-191),(3897-186)), xaxs='i')
 # fitdata$DO.obs[(3798-191):(3897-186)] = 11
 
+
 plotvars = colnames(fitdata)[! colnames(fitdata) %in% c('solar.time')]
-pdf(width=5, height=9,
-    file=paste0('~/Desktop/untracked/sm_figs/input_',
-    site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
+# pdf(width=5, height=9,
+#     file=paste0('~/Desktop/untracked/sm_figs/input_',
+#     site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
 par(mfrow=c(length(plotvars),1), mar=c(0,0,0,0), oma=c(4,4,.5,.5))
 t = as.Date(fitdata$solar.time)
 for(i in plotvars){
@@ -105,7 +134,7 @@ for(i in plotvars){
         axis(1, monthstarts, substr(t[monthstarts],6,7))
     }
 }
-dev.off()
+# dev.off()
 
 modelfit = fit_metabolism(fitdata)
 

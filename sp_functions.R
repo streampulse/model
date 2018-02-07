@@ -1,5 +1,4 @@
 
-
 request_data = function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
     flags=FALSE, token=NULL){
     # Download data from the streampulse platform
@@ -97,10 +96,8 @@ retrieve_air_pressure = function(sites, dd){
     return(df_out)
 }
 
-# d=streampulse_data; model="streamMetabolizer"; type="bayes"
-# fillgaps=TRUE; interval='15 min'
-# get_windspeed=TRUE; get_airpressure=TRUE
-# d=streampulse_data; type='mle'; model='streamMetabolizer'; interval='15 min'; fillgaps='interpolation'
+# rm_flagged=list('Bad Data', 'Questionable')
+# d=streampulse_data; type='bayes'; model='streamMetabolizer'; interval='15 min'; fillgaps='interpolation'
 prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     interval='15 min', rm_flagged='none', fillgaps='interpolation', ...){
     #, get_windspeed=FALSE,
@@ -162,12 +159,15 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         dd$variable[dd$variable=="USGSDischarge_m3s"] = "Discharge_m3s"
     }
 
+    # dd2 <<- dd; d2 <<- d
+    # dd = dd2; d = d2
+
     vd = unique(dd$variable) # variables
     dd = tidyr::spread(dd, variable, value) # spread out data
     md = d$sites # metadata
 
     if('Depth_m' %in% vd){
-        if(any(dd$Depth_m <= 0)){
+        if(any(na.omit(dd$Depth_m) <= 0)){
             warning('Depth values <= 0 detected. Replacing with 0.000001.')
             dd$Depth_m[dd$Depth_m <= 0] = 0.000001
         }
@@ -208,6 +208,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     alldates = data.frame(DateTime_UTC=seq.POSIXt(dd[1,1], dd[nrow(dd),1],
         by=interval))
     dd = left_join(alldates, dd, by='DateTime_UTC')
+    # plot(dd$WaterTemp_C)
 
     #acquire air pressure data if necessary
     if((all(! c('satDO_mgL','DOsat_pct') %in% vd) | ! 'WaterTemp_C' %in% vd) &
