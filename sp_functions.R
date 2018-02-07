@@ -9,10 +9,12 @@ request_data = function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
     # flags is logical, include flag data or not
 
     # Basic checks; make list of variables
-    if(length(sitecode)>1) stop("Please only enter one site to model.")
+    if(length(sitecode)>1){
+        stop("Please only enter one site to model.", call.=FALSE)
+    }
     if(!is.null(startdate) & !is.null(enddate)){
         if(as.Date(enddate) < as.Date(startdate)){
-            stop("Start date is after end date.")
+            stop("Start date is after end date.", call.=FALSE)
         }
     }
     variables = c("DO_mgL","DOsat_pct","satDO_mgL","Level_m",
@@ -98,10 +100,9 @@ retrieve_air_pressure = function(sites, dd){
 
 # rm_flagged=list('Bad Data', 'Questionable')
 # d=streampulse_data; type='bayes'; model='streamMetabolizer'; interval='15 min'; fillgaps='interpolation'
+# d=streampulse_data; type='bayes'; model='streamMetabolizer'; interval='30 min'; fillgaps='interpolation'
 prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     interval='15 min', rm_flagged='none', fillgaps='interpolation', ...){
-    #, get_windspeed=FALSE,
-    # get_airpressure=FALSE){
 
     # type is one of "bayes" or "mle"
     # model is one of "streamMetabolizer" or "BASE"
@@ -121,26 +122,73 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     # Basic checks
     if(model=="BASE") type="bayes" #can't use mle mode with BASE
     if(!grepl('\\d+ (min|hour)', interval, perl=TRUE)){ #correct interval format
-        stop(paste('Interval must be of the form "length [space] unit" where',
-            'length is numeric and unit is either "min" or "hour".'))
+        stop(paste('Interval must be of the form "length [space] unit"\n\twhere',
+            'length is numeric and unit is either "min" or "hour".'), call.=FALSE)
     }
     if(!fillgaps %in% c('interpolation','locf','mean','random','kalman','ma',
         'none')){
-        stop(paste0("fillgaps must be one of 'interpolation', 'locf', 'mean', ",
-            "'random', 'kalman', 'ma', or 'none'"))
+        stop(paste0("fillgaps must be one of 'interpolation', 'locf', 'mean',",
+            "\n\t'random', 'kalman', 'ma', or 'none'"), call.=FALSE)
     }
     if(any(! rm_flagged %in% list('Bad Data','Questionable','Interesting')) &
         any(rm_flagged != 'none')){
         stop(paste0("rm_flagged must either be 'none' or a list containing any",
-            " of: 'Bad Data', 'Questionable', 'Interesting'."))
+            " of:\n\t'Bad Data', 'Questionable', 'Interesting'."), call.=FALSE)
     }
     if(any(rm_flagged != 'none') & ! 'flagtype' %in% colnames(d$data)){
-        stop('No flag data available. Call request_data again with flags=TRUE.')
+        stop(paste0('No flag data available.\n\t',
+            'Call request_data again with flags=TRUE.'), call.=FALSE)
     }
 
     #### Format data for models
     cat(paste("Formatting data for ",model,".\n", sep=""))
     dd = d$data
+
+    #check for consistent sample interval (including cases where there are gaps
+    #between samples and where the underying sample pattern changes)
+    varz = unique(dd$variable)
+    ints_by_var = data.frame(var=varz, int=rep(NA, length(varz)))
+    for(i in 1:length(varz)){
+
+        #get lengths and values for successive repetitions of the same
+        #sample interval (using run length encoding)
+        dt_by_var = sort(unique(dd$DateTime_UTC[dd$variable == varz[i]]))
+        run_lengths = rle(diff(as.numeric(dt_by_var)))
+        if(length(run_lengths$lengths) != 1){
+
+            # if gaps or interval change, get mode interval
+            uniqv = unique(run_lengths$values)
+            input_int = uniqv[which.max(tabulate(match(run_lengths$values,
+                uniqv)))] / 60 #this gets mode
+
+            if(any(uniqv %% min(uniqv) != 0)){ #if underlying pattern changes
+                warning(paste0('Sample interval is not consistent for ', varz[i],
+                    '\n\tGaps will be introduced!\n\t',
+                    'Using the most common interval: ',
+                    as.character(input_int), ' mins.'), call.=FALSE)
+            } else {
+                message(paste0(length(run_lengths$lengths)-1,
+                    ' sample gap(s) detected in ', varz[i], '.'))
+            }
+
+            #store the (most common) sample interval for each variable
+            ints_by_var[i,2] = as.difftime(input_int, unit='mins')
+
+        } else {
+
+            # if consistent, get the sample interval as a difftime object
+            ints_by_var[i,2] = difftime(dt_by_var[2],  dt_by_var[1],
+                units='mins')
+        }
+    }
+
+    #will later coerce all vars to the longest sample interval
+    if(length(unique(ints_by_var$int)) > 1){
+        input_int = max(ints_by_var$int)
+        message(paste0('Multiple sample intervals detected across variables (',
+            paste(unique(ints_by_var$int), collapse=' min, '),
+            ' min).\n\tUsing ', input_int, ' so as not to introduce gaps.'))
+    }
 
     #remove (replace with NA) flagged data if desired
     if(any(rm_flagged != 'none')){
@@ -168,28 +216,10 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
 
     if('Depth_m' %in% vd){
         if(any(na.omit(dd$Depth_m) <= 0)){
-            warning('Depth values <= 0 detected. Replacing with 0.000001.')
+            warning('Depth values <= 0 detected. Replacing with 0.000001.',
+                call.=FALSE)
             dd$Depth_m[dd$Depth_m <= 0] = 0.000001
         }
-    }
-
-    # check for consistent sample interval
-    run_lengths = rle(diff(as.numeric(dd$DateTime_UTC)))
-    if(length(run_lengths$lengths) != 1){
-
-        # if not consistent interval, set to mode
-        uniqv = unique(run_lengths$values)
-        input_int = uniqv[which.max(tabulate(match(run_lengths$values,
-            uniqv)))] / 60
-        warning(paste0('Sample interval is not consistent across dataset.',
-            ' Gaps will be introduced! Using the most common interval: ',
-            as.character(input_int), ' mins.'))
-        input_int = as.difftime(input_int, unit='mins')
-    } else {
-
-        # if consistent, get the sample interval as a difftime object
-        input_int = difftime(dd$DateTime_UTC[2],  dd$DateTime_UTC[1],
-            units='mins')
     }
 
     # check if desired interval is compatible with sample interval
@@ -198,17 +228,42 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         units=paste0(int_parts[2], 's')) #get desired interval as difftime
     remainder = as.double(desired_int, units='mins') %% as.double(input_int)
     if(remainder != 0){
-        warning(paste0('Desired time interval (', interval,
-            ') is not a multiple of sample interval (',
-            as.character(as.numeric(input_int)),
-            ' min). Gaps will be introduced!'))
+        message(paste0('Warning: Desired time interval (', interval,
+            ') is not a multiple of sample interval (', #warning doesn't bubble
+            as.character(as.numeric(input_int)), #up properly if imputation
+            ' min).\n\tGaps will be introduced!')) #error occurs, so using message
     }
 
-    # coerce to desired time interval
-    alldates = data.frame(DateTime_UTC=seq.POSIXt(dd[1,1], dd[nrow(dd),1],
-        by=interval))
-    dd = left_join(alldates, dd, by='DateTime_UTC')
-    # plot(dd$WaterTemp_C)
+    #coerce to desired time interval. If multiple sample intervals are found...
+    if(length(unique(ints_by_var$int)) > 1){
+
+        #if some data are offset from the starting row, this may grab NAs instead
+        #of data, so it iterates until finds the right starting row.
+        na_props = 1
+        starting_row = 1
+        while(sum(na_props > 0.8) / length(na_props) > 0.4){ #heuristic test
+
+            if(starting_row > 10){
+                stop(paste0('Unable to coerce data to desired time interval.',
+                    '\n\tTry specifying a different interval.'), call.=FALSE)
+            }
+
+            alldates = data.frame(DateTime_UTC=seq.POSIXt(dd[starting_row,1],
+                dd[nrow(dd),1], by=interval))
+            dd_temp = left_join(alldates, dd, by='DateTime_UTC')
+
+            #get new NA proportions for each column
+            na_props = apply(dd_temp[,-c(1:3)], 2,
+                function(x){ sum(is.na(x)) / length(x) })
+            starting_row = starting_row + 1
+        }
+        dd = dd_temp
+    } else { #if just one sample interval is found, it's easy.
+        alldates = data.frame(DateTime_UTC=seq.POSIXt(dd[1,1],
+            dd[nrow(dd),1], by=interval))
+        dd = left_join(alldates, dd, by='DateTime_UTC')
+    }
+
 
     #acquire air pressure data if necessary
     if((all(! c('satDO_mgL','DOsat_pct') %in% vd) | ! 'WaterTemp_C' %in% vd) &
@@ -216,7 +271,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
 
         airpres <- try(retrieve_air_pressure(d$sites, dd), silent=TRUE)
         if(class(airpres)=='try-error') {
-            warning(paste('Failed to retrieve air pressure data.'))
+            warning(paste('Failed to retrieve air pressure data.'), call.=FALSE)
         } else {
             dd = left_join(dd, airpres, by='DateTime_UTC')
             dd$AirPres_kPa = na.approx(dd$AirPres_kPa, na.rm=FALSE, rule=2)
@@ -260,8 +315,8 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         if("Discharge_m3s" %in% vd){
             dd$depth = calc_depth(dd$discharge)
         } else {
-            stop(paste('Missing discharge and depth data. Not enough',
-                'information to proceed.'))
+            stop(paste('Missing discharge and depth data.\n\tNot enough',
+                'information to proceed.'), call.=FALSE)
         }
     }
 
@@ -282,9 +337,9 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
                 dd$DO.sat = dd$DO.obs / (dd$DOsat_pct*ff)
             } else {
                 if(!all(c("temp.water","AirPres_kPa") %in% colnames(dd))){
-                    stop(paste('Insufficient data to fit this model. Need',
-                        'either DO sat (mgL) and water temp (C) OR air ',
-                        'pressure (kPa).'))
+                    stop(paste('Insufficient data to fit this model.\n\tNeed',
+                        'either DO sat (mgL) and water temp (C) OR\n\tair ',
+                        'pressure (kPa).'), call.=FALSE)
                 }
                 cat('Modeling DO.sat based on water temperature and',
                     'air pressure.\n')
@@ -304,7 +359,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         if(type=="bayes") model_variables = c(model_variables,"discharge")
     }
     if(!all(model_variables %in% colnames(dd))){
-        stop("Insufficient data to fit this model.")
+        stop("Insufficient data to fit this model.", call.=FALSE)
     }
 
     # Structure data, add class for model name

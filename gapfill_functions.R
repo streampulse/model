@@ -6,7 +6,7 @@ series_impute = function(x, tol, samp, algorithm, ...){
     # then replaces NAs for long runs.
     # samp is the number of samples per day
     # algorithm and ... are passed to imputeTS::na.seasplit
-    plot(x, type='l')
+    # plot(x, type='l')
     na_locations = which(is.na(x))
     # if(length(na_locations)){
     #     x2 <<- x
@@ -31,11 +31,17 @@ series_impute = function(x, tol, samp, algorithm, ...){
     if(length(x) > samp * 2){ #don't leverage periodicity for <2 days
         x = ts(x, start=2, frequency=samp) #add periodicity info
     } else {
-        warning(paste('Less than 2 days of data, so interpolating without',
-            'periodicity information.'))
+        warning(paste('Less than 2 days of data, so interpolating without\n',
+            '\tperiodicity information.'), .call=FALSE)
     }
-    imputed = as.numeric(suppressWarnings(na.seasplit(x,
-        algorithm=algorithm, ...)))
+
+    imputed = try(as.numeric(suppressWarnings(na.seasplit(x,
+        algorithm=algorithm, ...))), silent=TRUE)
+    if(class(imputed) == 'try-error'){
+        stop(paste0('Could not perform all imputations. Are you requesting a\n',
+            '\ttime interval less than that of your data?'), call.=FALSE)
+    }
+
 
     #restore NAs where there were long runs
     if(length(na_locations) > 1){
@@ -70,7 +76,7 @@ top_k = function(df, k, minobs){
 
     enough_full_rows = TRUE
     if(length(fullrows) < 30){
-        message(paste('Not filling gaps via nearest neighbors approach;',
+        message(paste('Not filling gaps via nearest neighbors approach;\n\t',
             'fewer than 30 days without NAs for comparison.'))
         enough_full_rows = FALSE
     }
@@ -239,12 +245,13 @@ gap_fill = function(df, maxspan_days=5, knn=3, sint, algorithm, ...){
     # check if all but one column is numeric
     if( !(length(which(sapply(df, function(x) inherits(x, "numeric")))) ==
             ncol(df)-1) ){
-        stop("ERROR: All but one column in df must be numeric.")
+        stop("All but one column in df must be numeric.", call.=FALSE)
     }
     # check if a posix column exists
     wposix = which(sapply(df, function(x) inherits(x, "POSIXct")))
     if( !(length(wposix)==1) ){
-        stop("ERROR: Need at least one column in df with POSIXct datetime.")
+        stop("Need at least one column in df with POSIXct datetime.",
+            call.=FALSE)
     }
 
     # find POSIXct column, that is the one that we need to break into
@@ -264,6 +271,13 @@ gap_fill = function(df, maxspan_days=5, knn=3, sint, algorithm, ...){
     #put knn gapfiller here, before in-line gapfiller
 
     # impute in-line gaps (runs of NAs within a column) in df
+    # z = input_data[,-(1:2)]
+    # print(head(z))
+    # par(mfcol=c(1, ncol(z)))
+    # for(i in 1:ncol(z)){
+    #     err = try(plot(z[,i]))
+    #     if(class(err) == 'try-error') print(paste(i, 'failed'))
+    # }
     imputed = as.data.frame(sapply(X=input_data[,-(1:2)],
         FUN=series_impute, tol=192, samp=samples_per_day,
         algorithm=algorithm, ...,
@@ -292,7 +306,8 @@ gap_fill = function(df, maxspan_days=5, knn=3, sint, algorithm, ...){
         filled = filled[,!colnames(filled) %in% too_few_val_cols]
         warning(paste0('Too few values in ',
             paste(too_few_val_cols, collapse=', '),
-            '. Dropping column(s), which may result in fatal error.'))
+            '.\n\tDropping column(s), which may result in fatal error.'),
+            call.=FALSE)
     }
 
     #linearly impute any remaining gaps

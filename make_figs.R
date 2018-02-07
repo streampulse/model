@@ -106,7 +106,8 @@ for(i in plotvars){
 source('~/git/streampulse/model/sp_functions.R')
 source('~/git/streampulse/model/gapfill_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
-    model=model_name, interval=interval,
+    model=model_name, interval='30 min',
+    # model=model_name, interval=interval,
     rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps)
 
 # plot(fitdata$DO.sat, type='l')
