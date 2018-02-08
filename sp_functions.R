@@ -17,7 +17,7 @@ request_data = function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
             stop("Start date is after end date.", call.=FALSE)
         }
     }
-    variables = c("DO_mgL","DOsat_pct","satDO_mgL","Level_m",
+    variables = c("DO_mgL","DOsat_pct","satDO_mgL","Level_m","WaterPres_kPa",
         "Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa","Discharge_m3s")
 
     #assemble url based on user input
@@ -65,6 +65,9 @@ sp_flags = function(d){
 # vars=c('windspeed', 'airpressure'); years = 2017
 # d = d2
 retrieve_air_pressure = function(sites, dd){
+
+    # sites2 <<- sites
+    # dd2 <<- dd
 
     #format site data for use with geoknife package
     station = as.data.frame(t(sites[,c('lon','lat')]))

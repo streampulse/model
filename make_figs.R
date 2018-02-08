@@ -39,12 +39,12 @@ fillgaps='interpolation'
 interval='15 min'
 #done, ##problem
 ##site_code = "PR_QS"; start_date = "2014-03-10"; end_date = '2015-03-10'#ed "2017-12-20"
-site_code = "RI_CorkBrk"; start_date = "2015-06-23"; end_date = '2016-06-22'#ed "2017-01-03", sd=2014-06-23
+# site_code = "RI_CorkBrk"; start_date = "2015-06-23"; end_date = '2016-06-22'#ed "2017-01-03", sd=2014-06-23
 #site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
 #site_code = "CT_HUBB"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
 # site_code = "CT_FARM"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
 #site_code = "CT_Unio"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
-#site_code = "VT_Pass"; start_date = "2015-06-26"; end_date = '2016-06-25' #ed 2016-10-27
+# site_code = "VT_Pass"; start_date = "2015-06-26"; end_date = '2016-06-25' #ed 2016-10-27
 #site_code = "VT_POPE"; start_date = "2015-06-03"; end_date = '2016-06-02' #ed 2016-11-11
 #site_code = "VT_MOOS"; start_date = "2015-06-03"; end_date = '2016-11-11' #ed 2016-11-11
 ##site_code = "PR_Icacos"; start_date = "2016-06-09"; end_date = '2016-12-15'
@@ -53,23 +53,25 @@ site_code = "RI_CorkBrk"; start_date = "2015-06-23"; end_date = '2016-06-22'#ed 
 #site_code = "MD_GFCP"; start_date = "2016-05-07"; end_date = '2016-11-19'
 #site_code = "MD_GFGB"; start_date = "2016-02-19"; end_date = '2016-11-11'
 #site_code = "MD_DRKR"; start_date = "2016-02-18"; end_date = '2016-11-19'
-#site_code = "MD_POBR"; start_date = "2016-02-19"; end_date = '2016-11-19'
+# site_code = "MD_POBR"; start_date = "2016-02-19"; end_date = '2016-11-19'
 #site_code = "MD_BARN"; start_date = "2016-02-19"; end_date = '2016-11-19'
 #site_code = "VT_SLPR"; start_date = "2015-06-03"; end_date = '2016-06-03' #ed 2016-11-11
-#site_code = "AZ_LV"; start_date = "2017-08-07"; end_date = "2017-12-25" #sd 2017-07-07 but no o2
+# site_code = "AZ_LV"; start_date = "2017-08-07"; end_date = "2017-12-25" #sd 2017-07-07 but no o2
 #site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03" #sd 11-13
 #site_code = "AZ_SC"; start_date = "2017-02-08"; end_date = "2017-03-28"
 # site_code = "AZ_WB"; start_date = "2017-08-04"; end_date = "2017-12-27"
-#site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
+# site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
 ##site_code = "NC_UEno"; start_date = "2016-07-12"; end_date = "2017-08-30"
 ##site_code = "NC_Stony"; start_date = "2016-06-30"; end_date = "2017-08-09"
-##site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
+site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
 ##site_code = "NC_UNHC"; start_date = "2016-07-12"; end_date = "2017-08-30"
 ##site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
 # site_code = 'WI_BEC'; start_date = '2017-01-26'; end_date = '2018-01-25' #2009-10-02; 2018-01-25
 # site_code = 'WI_BRW'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
 
 #run ####
+source('~/git/streampulse/model/sp_functions.R')
+# source('~/git/streampulse/model/gapfill_functions.R')
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
     flags=TRUE, token=NULL)
@@ -103,10 +105,10 @@ for(i in plotvars){
 # streampulse_data$data$value = sval
 
 # dim(streampulse_data$data)
-source('~/git/streampulse/model/sp_functions.R')
-source('~/git/streampulse/model/gapfill_functions.R')
+# source('~/git/streampulse/model/sp_functions.R')
+# source('~/git/streampulse/model/gapfill_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
-    model=model_name, interval='30 min',
+    model=model_name, interval='15 min',
     # model=model_name, interval=interval,
     rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps)
 
