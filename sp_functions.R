@@ -217,6 +217,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     dd = tidyr::spread(dd, variable, value) # spread out data
     md = d$sites # metadata
 
+    #correct any negative or 0 depth values (these break streamMetabolizer)
     if('Depth_m' %in% vd){
         if(any(na.omit(dd$Depth_m) <= 0)){
             warning('Depth values <= 0 detected. Replacing with 0.000001.',
@@ -285,6 +286,16 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
             #     xout=which(is.na(dd$AirPres_kPa)))$y
         }
 
+    }
+
+    #estimate discharge from level (aka stage) using Z-Q rating curve, if supplied
+
+    #if rating curve supplied but discharge included already, ignore curve
+
+    if(! 'Discharge_m3s' %in% vd){
+        # dd2 <<- dd
+        # stop('a')
+        # dd = dd2
     }
 
     # calculate/define model variables

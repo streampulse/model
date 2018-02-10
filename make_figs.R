@@ -70,7 +70,7 @@ site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
 # site_code = 'WI_BRW'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
 
 #run ####
-source('~/git/streampulse/model/sp_functions.R')
+# source('~/git/streampulse/model/sp_functions.R')
 # source('~/git/streampulse/model/gapfill_functions.R')
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
@@ -105,7 +105,7 @@ for(i in plotvars){
 # streampulse_data$data$value = sval
 
 # dim(streampulse_data$data)
-# source('~/git/streampulse/model/sp_functions.R')
+source('~/git/streampulse/model/sp_functions.R')
 # source('~/git/streampulse/model/gapfill_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     model=model_name, interval='15 min',
@@ -161,7 +161,7 @@ saveRDS(modelfit, paste('~/Desktop/untracked/sm_out/fit',
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
     # model_type, model_name, substr(interval,1,2), fillgaps, sep='_'))
 # modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_SC_2017-02-08_2017-03-28_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
-# modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_LV_2017-08-07_2017-12-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
+modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_LV_2017-08-07_2017-12-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
 
 #check daiy k-er correlation
 daily_er = modelfit@fit$daily$ER_daily_mean
