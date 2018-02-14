@@ -60,7 +60,7 @@ interval='15 min'
 #site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03" #sd 11-13
 #site_code = "AZ_SC"; start_date = "2017-02-08"; end_date = "2017-03-28"
 # site_code = "AZ_WB"; start_date = "2017-08-04"; end_date = "2017-12-27"
-# site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
+site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
 ##site_code = "NC_UEno"; start_date = "2016-07-12"; end_date = "2017-08-30"
 ##site_code = "NC_Stony"; start_date = "2016-06-30"; end_date = "2017-08-09"
 site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
