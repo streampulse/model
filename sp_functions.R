@@ -104,21 +104,43 @@ retrieve_air_pressure = function(sites, dd){
 estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
     sh=NULL, dd=NULL, plot=TRUE){
 
-    if(is.numeric(sh)){ #need to calculate depth. based on:
+    # if(is.numeric(sh)){ #then need to calculate depth. based on:
         #https://web.archive.org/web/20170617070623/http://www.onsetcomp.com/files/support/tech-notes/onsetBCAguide.pdf
+
+    defpar = par()
+
+    if(! 'Depth_m' %in% colnames(dd)){
+
+        cat(paste0('No depth data detected. Estimating level (AKA stage) from ',
+            'water pressure.\n'))
+        if(any(! c('WaterPres_kPa','AirPres_kPa') %in% colnames(dd))){
+            stop(paste0('Air and/or water pressure not detected.',
+                '\n\tNot enough information to proceed.'),
+                call.=FALSE)
+        }
 
         #remove air pressure so all pressure is from hydraulic head
         hyd_pres = dd$WaterPres_kPa - dd$AirPres_kPa
 
-        #compute fluid density
-        wat_temp = dd$WaterTemp_C
-        T1 = 16.945176 * wat_temp
-        T1b = 16.879850e-03 * wat_temp
-        T2 = 7.9870401e-03 * wat_temp^2
-        T3 = 46.170461e-06 * wat_temp^3
-        T4 = 105.56302e-09 * wat_temp^4
-        T5 = 280.54253e-12 * wat_temp^5
-        fl_dens = (999.83952 + T1 - T2 - T3 + T4 - T5) / (1 + T1b)
+        if(! 'WaterTemp_C' %in% colnames(dd)){
+            warning(paste0('Water temperature not detected.',
+                '\n\tAssuming density of water is 1 g/cm^3.'),
+                call.=FALSE)
+
+            fl_dens = 1000 #g/m^3
+
+        } else {
+
+            #compute fluid density
+            wat_temp = dd$WaterTemp_C
+            T1 = 16.945176 * wat_temp
+            T1b = 16.879850e-03 * wat_temp
+            T2 = 7.9870401e-03 * wat_temp^2
+            T3 = 46.170461e-06 * wat_temp^3
+            T4 = 105.56302e-09 * wat_temp^4
+            T5 = 280.54253e-12 * wat_temp^5
+            fl_dens = (999.83952 + T1 - T2 - T3 + T4 - T5) / (1 + T1b)
+        }
 
         #convert fluid density to lb/ft^3
         fl_dens = 0.0624279606 * fl_dens
@@ -128,46 +150,78 @@ estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
         kPa_to_psi = 0.1450377
         psi_to_psf = 144.0
         fl_depth = ft_to_m * (kPa_to_psi * psi_to_psf * hyd_pres) / fl_dens
+    } else { #else we have depth already
+        fl_depth = dd$Depth_m
+    }
 
-        #correct for sensor height above bed
-        depth = fl_depth + sh
-        cat('Quantiles of computed water depth:\n')
-        print(quantile(depth, na.rm=TRUE))
+    #correct for sensor height above bed if sensor_height supplied
+    if(!is.null(sh)){
 
-        #run depth through site-specific rating curve to get discharge
-        # disch = 0.3610671493 * wat_lvl^8.8560174769
-        # plot(wat_lvl, disch)
+        depth = fl_depth + sh #sh needs to be in meters
+
+        message(paste0('Computing depth as level (AKA stage) plus ',
+            'sensor height.\n\tMake sure other parameters supplied to ',
+            'zq_curve are also based on depth,\n\trather than level,',
+            ' or else omit sensor_height argument.'))
+
+        dep_or_lvl = 'Depth'
+
+        cat('Quantiles of computed water depth (m):\n')
+
+    } else {
+
+        depth = fl_depth
+
+        message(paste0('Without sensor_height argument, ZQ rating curve will ',
+            'be based on level (AKA stage),\n\trather than depth. Make sure ',
+            'other parameters supplied to zq_curve are\n\talso based on level,',
+            ' or else include sensor_height argument.'))
+
+        dep_or_lvl = 'Level'
+
+        cat('Quantiles of computed water level (m):\n')
+    }
+    print(quantile(depth, na.rm=TRUE))
+
+    #generate rating curve if Z and Q sample data supplied
+    if(!is.null(Z)){
 
         Q = Q[order(Z)]
         Z = Z[order(Z)] #just making sure there's no funny business
+
+        #try to fit exponential model
         mod = tryCatch(nls(Q ~ (a * Z^b), start=list(a=0.1, b=1)),
             error=function(e){
                 stop(paste0('Failed to fit rating curve.\n\tThis is worth ',
-                    'mentioning to Mike: vlahm13@gmail.com.\n\t)',
-                    'Note that you can fit your own and then supply\n\t',
-                    'a and b to the curve equation: Q=aZ^b.'), call.=FALSE)
+                    'mentioning to Mike: vlahm13@gmail.com.\n\t',
+                    'Note that you can fit your own curve and then supply\n\t',
+                    'a and b (of Q=aZ^b) directly.'), call.=FALSE)
             })
-        plot(Z, Q)
-        lines(Z, predict(mod, list(x=sort(Z))))
-        # class(mod$m$getPars())
+
+        if(plot){
+            par(mfrow=c(2,1), mar=c(4,4,1,1), oma=c(0,0,0,0))
+            plot(Z, Q, xlab='Z sample data', ylab='Q sample data',
+                las=1, main='Modeled rating curve')
+            lines(Z, predict(mod, list(x=Z)))
+        }
+
         params = summary(mod)$parameters
         a = params[1,1]
         b = params[2,1]
 
-        disch = a * wat_lvl^b
-        plot(wat_lvl, disch)
+        cat(paste0('Rating curve parameters:\n\ta = ', a, '\n\tb = ', b))
+
+    } #else a and b have been supplied directly
+
+    #estimate discharge using a and b params from rating curve
+    dd$Discharge_m3s = a * depth^b
+
+    if(plot){
+        plot(depth, dd$Discharge_m3s, xlab=paste(dep_or_lvl, 'series data'),
+            yab='Estimated discharge', main='Rating curve prediction', las=1)
     }
+    par = defpar
 
-
-    if(length(Z)){
-
-    } else {
-        if(is.numeric(a)){
-
-        } else { #level does not need to be computed
-
-        }
-    }
 }
 
 # rm_flagged=list('Bad Data', 'Questionable')
@@ -175,7 +229,9 @@ estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
 # d=streampulse_data; type='bayes'; model='streamMetabolizer'; interval='30 min'; fillgaps='interpolation'
 prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     interval='15 min', rm_flagged='none', fillgaps='interpolation',
-    zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=NULL, b=NULL), ...){
+    zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=NULL, b=NULL),
+    estimate_areal_depth=TRUE, ...){
+    # zq_curve=list(Z=NULL, Q=NULL, a=NULL, b=NULL), ...){
 
     # type is one of "bayes" or "mle"
     # model is one of "streamMetabolizer" or "BASE"
@@ -219,13 +275,24 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     ab_supplied = zq_supplied = FALSE
     using_zq_curve = !all(unlist(lapply(zq_curve, is.null)))
     if(using_zq_curve){
+
+        #unpack arguments supplied to zq_curve
+        sensor_height = Z = Q = a = b = NULL
+        if(!is.null(zq_curve$sensor_height)){
+            sensor_height = zq_curve$sensor_height
+        }
+        if(!is.null(zq_curve$Z)) Z = zq_curve$Z
+        if(!is.null(zq_curve$Q)) Q = zq_curve$Q
+        if(!is.null(zq_curve$a)) a = zq_curve$a
+        if(!is.null(zq_curve$b)) b = zq_curve$b
+
         # message(paste0('NOTE: You have specified arguments to zq_curve.\n\t',
         #     'These are only needed if time-series data for discharge cannot',
         #     '\n\tbe found.'))
-        if(is.numeric(zq_curve$a) & is.numeric(zq_curve$b)){
+        if(is.numeric(a) & is.numeric(b)){
             ab_supplied = TRUE
         }
-        if(length(zq_curve$Z) > 1 & length(zq_curve$Q) > 1){
+        if(length(Z) > 1 & length(Q) > 1){
             zq_supplied = TRUE
         }
         if(ab_supplied & zq_supplied){
@@ -302,6 +369,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     }
 
     # Use USGS level and discharge if missing local versions
+    #level currenty not used, but could be used in the absence of discharge and depth
     if("USGSLevel_m" %in% dd$variable && !"Level_m" %in% dd$variable){
         dd$variable[dd$variable=="USGSLevel_m"] = "Level_m"
     }
@@ -318,33 +386,44 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     md = d$sites # metadata
 
     #deal with "level"/"depth" naming issue. These measure the same thing.
-    if('Level_m' %in% vd & ! 'Depth_m' %in% vd){ #use level if depth unavailable
-        dd$Depth_m = dd$Level_m
-        vd = c(vd, 'Depth_m')
-        message('Using level data in place of missing depth data.')
-    }
-    if('Level_m' %in% vd & 'Depth_m' %in% vd){ #use col with more data if both
-        na_cnt = sapply(dd[,c('Level_m','Depth_m')], function(x) sum(is.na(x)))
-        level_or_depth = names(which.min(na_cnt))
-        dd$Depth_m = dd[,level_or_depth]
-        warning(paste0('Both level and depth data found. These measure the ',
-            'same thing.\n\tUsing ', level_or_depth,
-            ' because it has better coverage.'), call.=FALSE)
-    }
+    #UPDATE: level=stage=gage_height=vertical distance from sensor to surface
+    #depth = vertical distance from bed to surface.
+    #can be depth-at-gage OR averaged across width OR
+    #averaged across area defined by width and O2 turnover distance.
+    #this last metric is what the model actually needs
+    #the code below may be party useful depending on what "depth" means for a given site
+    # if('Level_m' %in% vd & ! 'Depth_m' %in% vd){ #use level if depth unavailable
+    #     dd$Depth_m = dd$Level_m
+    #     vd = c(vd, 'Depth_m')
+    #     message('Using level data in place of missing depth data.')
+    # }
+    # if('Level_m' %in% vd & 'Depth_m' %in% vd){ #use col with more data if both
+    #     na_cnt = sapply(dd[,c('Level_m','Depth_m')], function(x) sum(is.na(x)))
+    #     level_or_depth = names(which.min(na_cnt))
+    #     dd$Depth_m = dd[,level_or_depth]
+    #     warning(paste0('Both level and depth data found. These measure the ',
+    #         'same thing.\n\tUsing ', level_or_depth,
+    #         ' because it has better coverage.'), call.=FALSE)
+    # }
 
     #another test, now that depth has been acquired if available
+    #UPDATE: turns out rating curves can directly relate level and discharge,
+    #so depth is not needed at this point (though areal depth is needed, ultimately)
+    #and sensor height is not needed as a result. This would only be useful
+    #for correcting level to depth, which would be no better for buiding a rating curve
     missing_depth = ! 'Depth_m' %in% vd
-    missing_sens_height = !is.numeric(zq_curve$sensor_height)
-    if(using_zq_curve & missing_depth & missing_sens_height){
-        stop(paste0('Need either sensor_height or depth (level) time-series',
-            ' data\n\tto compute discharge via rating curve.'),
-            call.=FALSE)
-    }
+    # missing_sens_height = !is.numeric(zq_curve$sensor_height)
+    # if(using_zq_curve & missing_depth & missing_sens_height){
+    # if(using_zq_curve & missing_depth){
+    #     stop(paste0('Need either sensor_height or depth (level) time-series',
+    #         ' data\n\tto compute discharge via rating curve.'),
+    #         call.=FALSE)
+    # }
 
     #correct any negative or 0 depth values (these break streamMetabolizer)
     if('Depth_m' %in% vd){
         if(any(na.omit(dd$Depth_m) <= 0)){
-            warning('Depth (level) values <= 0 detected. Replacing with 0.000001.',
+            warning('Depth values <= 0 detected. Replacing with 0.000001.',
                 call.=FALSE)
             dd$Depth_m[dd$Depth_m <= 0] = 0.000001
         }
@@ -398,7 +477,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     # missing_waterTemp = ! 'WaterTemp_C' %in% vd
     missing_airPres = ! 'AirPres_kPa' %in% vd
     need_airPres_for_DOsat = missing_DOsat & missing_airPres
-    need_airPres_for_Q = using_zq_curve & missing_airPres & missing_depth
+    need_airPres_for_Q = using_zq_curve & missing_airPres & missing_depth #revisit "depth" here and elsewhere
 
     if(need_airPres_for_DOsat | need_airPres_for_Q){
 
@@ -417,7 +496,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
 
     }
 
-    #estimate discharge from depth (aka level or stage) using Z-Q rating curve
+    #estimate discharge from depth (or eventually level too) using Z-Q rating curve
     #if arguments have been supplied to zq_curve.
     if('Discharge_m3s' %in% vd & using_zq_curve){
         warning(paste0('Arguments supplied to zq_curve, so ignoring available',
@@ -425,23 +504,28 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     }
     if(zq_supplied){
         cat(paste0('Modeling discharge from rating curve generated from\n\t',
-            'supplied Z and Q data.\n'))
-        dd$Discharge_m3s = estimate_discharge(Z=zq_curve$Z, Q=zq_curve$Q,
-            sh=zq_curve$sensor_height, dd=dd)
+            'supplied Z and Q samples.\n'))
+        dd$Discharge_m3s = estimate_discharge(Z=Z, Q=Q, sh=sensor_height, dd=dd)
     } else {
-        if(ab_supplied & missing_depth){
+        if(ab_supplied){
             cat(paste0('Modeling discharge from rating curve determined by',
-                '\n\tsupplied a and b parameters.\n\tEstimating depth ',
-                'from water pressure, air pressure, and sensor height.\n'))
-            dd$Discharge_m3s = estimate_discharge(a=zq_curve$a, b=zq_curve$b,
-                sh=zq_curve$sensor_height, dd=dd)
-        } else {
-            cat(paste0('Modeling discharge from rating curve determined by',
-                '\n\tsupplied a and b parameters.\n\tUsing available ',
-                'time-series data for depth.\n'))
-            dd$Discharge_m3s = estimate_discharge(a=zq_curve$a, b=zq_curve$b,
-                dd=dd)
+                '\n\tsupplied a and b parameters.\n'))
+            dd$Discharge_m3s = estimate_discharge(a=a, b=b,
+                sh=sensor_height, dd=dd)
         }
+        # if(ab_supplied & missing_depth){
+        #     cat(paste0('Modeling discharge from rating curve determined by',
+        #         '\n\tsupplied a and b parameters.\n\tEstimating depth or level',
+        #         ' from water pressure, air pressure, and sensor height.\n'))
+        #     dd$Discharge_m3s = estimate_discharge(a=zq_curve$a, b=zq_curve$b,
+        #         sh=zq_curve$sensor_height, dd=dd)
+        # } else {
+        #     cat(paste0('Modeling discharge from rating curve determined by',
+        #         '\n\tsupplied a and b parameters.\n\tUsing available ',
+        #         'time-series data for depth.\n'))
+        #     dd$Discharge_m3s = estimate_discharge(a=zq_curve$a, b=zq_curve$b,
+        #         dd=dd)
+        # }
     }
 
     # if(zq_supplied | ab_supplied){
@@ -479,18 +563,40 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     if(fillgaps != 'none') dd = gap_fill(dd, maxspan_days=5, knn=3,
         sint=desired_int, algorithm=fillgaps, ...)
 
-    # Rename variables
+    #rename variables
     if("DO_mgL" %in% vd) dd$DO.obs = dd$DO_mgL
     if("WaterTemp_C" %in% vd) dd$temp.water = dd$WaterTemp_C
-    if("Discharge_m3s" %in% vd) dd$discharge = dd$Discharge_m3s
-    if("Depth_m" %in% vd){
-        dd$depth = dd$Depth_m
-    } else { # get average depth from discharge
-        if("Discharge_m3s" %in% vd){
-            dd$depth = calc_depth(dd$discharge)
+    if('Discharge_m3s' %in% vd) dd$discharge = dd$Discharge_m3s
+
+    #use discharge to estimate mean depth of area defined
+    #by stream width and O2 turnover distance (if necessary or desired)
+    if("Discharge_m3s" %in% vd & estimate_areal_depth){
+        dd$depth = calc_depth(dd$discharge) #estimate mean areal depth
+    } else {
+
+        #otherwise just use depth directly.
+        if("Depth_m" %in% vd){
+            dd$depth = dd$Depth_m
+
+            warning(paste0('Passing "Depth_m" values from StreamPULSE database',
+                ' directly to streamMetabolizer.\n\tMetabolism estimates will',
+                ' be best if "Depth_m" represents mean depth\n\tfor the ',
+                'area defined by the width of the stream and the oxygen\n\t',
+                'turnover distance. "Depth_m" may also represent depth-at-gage',
+                ' or,\n\tworse, level-at-gage. These may result in poor ',
+                'metabolism estimates.\n\tYou may want to use zq_curve.'),
+                call.=FALSE)
+
         } else {
-            stop(paste0('Missing discharge and depth (level) ',
-                'data.\n\tNot enough information to proceed.'), call.=FALSE)
+
+            if(estimate_areal_depth){
+                stop(paste0('Missing discharge and depth data.\n\tNot enough ',
+                    'information to proceed.'), call.=FALSE)
+            } else {
+                stop(paste0('Missing depth data.\n\tNot enough information to ',
+                    'proceed.\n\tTry setting estimate_areal_depth to TRUE.'),
+                    call.=FALSE)
+            }
         }
     }
 
