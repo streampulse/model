@@ -1,13 +1,13 @@
 
 # x = input_data[,8]; tol=12; algorithm='interpolation'
 # x=select(daypoints,-date,-time); tol=0; samp=samp; algorithm='mean'
-series_impute = function(x, tol, samp, algorithm, ...){
+series_impute = function(x, tol, samp, algorithm, variable_name, ...){
     # records locations of NA runs longer than tol, imputes all gaps,
     # then replaces NAs for long runs.
     # samp is the number of samples per day
     # algorithm and ... are passed to imputeTS::na.seasplit
     # plot(x, type='l')
-    na_locations = which(is.na(x))
+
     # if(length(na_locations)){
     #     x2 <<- x
     #     samp2 <<- samp
@@ -15,6 +15,7 @@ series_impute = function(x, tol, samp, algorithm, ...){
     # x = x2
     # samp = samp2
     # tol=192; algorithm='interpolation'
+    na_locations = which(is.na(x))
 
     # message(dim(x))
     # message(dim(na_locations))
@@ -29,7 +30,7 @@ series_impute = function(x, tol, samp, algorithm, ...){
 
     #impute
     if(length(x) > samp * 2){ #don't leverage periodicity for <2 days
-        x = ts(x, start=2, frequency=samp) #add periodicity info
+        x = ts(x, start=1, frequency=samp) #add periodicity info
     } else {
         warning(paste('Less than 2 days of data, so interpolating without\n',
             '\tperiodicity information.'), .call=FALSE)
@@ -38,10 +39,18 @@ series_impute = function(x, tol, samp, algorithm, ...){
     imputed = try(as.numeric(suppressWarnings(na.seasplit(x,
         algorithm=algorithm, ...))), silent=TRUE)
     if(class(imputed) == 'try-error'){
-        stop(paste0('Could not perform all imputations. Are you requesting a\n',
-            '\ttime interval less than that of your data?'), call.=FALSE)
+        message(paste0('Could not perform imputation using method: "',
+            algorithm, '"\n\tfor variable: "', variable_name,
+            '". Trying to interpolate linearly.'))
+        imputed = try(as.numeric(suppressWarnings(na.approx(x,
+            na.rm=FALSE, rule=2))), silent=TRUE)
+        if(class(imputed) == 'try-error' | length(imputed) == 0){
+            stop(paste0('Imputation still failed. Are you requesting a\n\t',
+                'time interval smaller than that of your data?'), call.=FALSE)
+        } else {
+            message('Linear interpolation succeeded.')
+        }
     }
-
 
     #restore NAs where there were long runs
     if(length(na_locations) > 1){
@@ -117,7 +126,7 @@ prep_missing = function(df, nearest_neighbors, daily_averages, mm, samp){
     # daily_averages2 <<- daily_averages
     # mm2 <<- mm
     # samp2 <<- samp
-    # break
+    # stop('a')
     # df = df2
     # nearest_neighbors = nearest_neighbors2
     # daily_averages = daily_averages2
@@ -159,7 +168,7 @@ prep_missing = function(df, nearest_neighbors, daily_averages, mm, samp){
     if(any(is.na(daypoints))){
         #tol should be greater here probably?
         dayfill = series_impute(select(daypoints,-date,-time), tol=0,
-            samp=samp, algorithm='mean')
+            samp=samp, algorithm='mean', variable_name=work-this-out)
         missing[newdaypoints,] = data.frame(date=daypoints$date,
             time=daypoints$time, dayfill)
     }
@@ -239,7 +248,7 @@ gap_fill = function(df, maxspan_days=5, knn=3, sint, algorithm, ...){
 
     # df2 <<- df
     # sint2 <<- sint
-    # sint = sint2; df2 = df2
+    # sint = sint2; df = df2
     # maxspan_days=5; knn=3; algorithm=fillgaps
 
     # check if all but one column is numeric
@@ -278,11 +287,18 @@ gap_fill = function(df, maxspan_days=5, knn=3, sint, algorithm, ...){
     #     err = try(plot(z[,i]))
     #     if(class(err) == 'try-error') print(paste(i, 'failed'))
     # }
-    imputed = as.data.frame(sapply(X=input_data[,-(1:2)],
-        FUN=series_impute, tol=192, samp=samples_per_day,
-        algorithm=algorithm, ...,
-        simplify=FALSE)) #gaps >= tol will not be filled
-    input_data = data.frame(select(input_data, date, time), imputed)
+    # apply(input_data, 2, function(x) sum(is.na(x))/length(x))
+    imputed = input_data
+    for(i in 3:ncol(input_data)){
+        imputed[,i] = series_impute(x=input_data[,i], tol=samples_per_day*2,
+            samp=samples_per_day, algorithm=algorithm,
+            variable_name=colnames(input_data)[i])
+    }
+    # imputed = as.data.frame(sapply(X=input_data[,-(1:2)],
+    #     FUN=series_impute, tol=192, samp=samples_per_day,
+    #     algorithm=algorithm, variable_name=...,
+    #     simplify=FALSE)) #gaps >= tol will not be filled
+    # input_data = data.frame(select(input_data, date, time), imputed)
 
     #code below is for nearest neighbors gap filler, which needs work
 

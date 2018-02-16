@@ -102,11 +102,13 @@ retrieve_air_pressure = function(sites, dd){
 }
 
 estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
-    sh=NULL, dd=NULL, plot=TRUE){
+    sh=NULL, dd=NULL, fit, plot){
 
     # if(is.numeric(sh)){ #then need to calculate depth. based on:
         #https://web.archive.org/web/20170617070623/http://www.onsetcomp.com/files/support/tech-notes/onsetBCAguide.pdf
 
+    if(is.null(plot)) plot = TRUE
+    if(is.null(fit)) fit = 'power'
     defpar = par()
 
     if(! 'Depth_m' %in% colnames(dd)){
@@ -150,6 +152,7 @@ estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
         kPa_to_psi = 0.1450377
         psi_to_psf = 144.0
         fl_depth = ft_to_m * (kPa_to_psi * psi_to_psf * hyd_pres) / fl_dens
+
     } else { #else we have depth already
         fl_depth = dd$Depth_m
     }
@@ -166,7 +169,7 @@ estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
 
         dep_or_lvl = 'Depth'
 
-        cat('Quantiles of computed water depth (m):\n')
+        # cat('Quantiles of computed depth (m):\n')
 
     } else {
 
@@ -179,9 +182,9 @@ estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
 
         dep_or_lvl = 'Level'
 
-        cat('Quantiles of computed water level (m):\n')
+        # cat('Quantiles of computed level (m):\n')
     }
-    print(quantile(depth, na.rm=TRUE))
+    # print(round(quantile(depth, na.rm=TRUE), 4))
 
     #generate rating curve if Z and Q sample data supplied
     if(!is.null(Z)){
@@ -189,19 +192,45 @@ estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
         Q = Q[order(Z)]
         Z = Z[order(Z)] #just making sure there's no funny business
 
-        #try to fit exponential model
-        mod = tryCatch(nls(Q ~ (a * Z^b), start=list(a=0.1, b=1)),
-            error=function(e){
-                stop(paste0('Failed to fit rating curve.\n\tThis is worth ',
-                    'mentioning to Mike: vlahm13@gmail.com.\n\t',
-                    'Note that you can fit your own curve and then supply\n\t',
-                    'a and b (of Q=aZ^b) directly.'), call.=FALSE)
-            })
+        # Q2 <<- Q
+        # Z2 <<- Z
+        # a2 <<- a
+        # b2 <<- b
+        # stop()
+        # Q = Q2
+        # Z = Z2
+        # a = a2
+        # b = b2
 
-        if(plot){
+        #try to fit power model
+        if(fit == 'power'){
+            mod = tryCatch(nls(Q ~ (a * Z^b), start=list(a=0.1, b=1)),
+                error=function(e){
+                    stop(paste0('Failed to fit rating curve.\n\tThis is worth ',
+                        'mentioning to Mike: vlahm13@gmail.com.\n\t',
+                        'Note that you can fit your own curve and then supply\n\t',
+                        'a and b (of Q=aZ^b) directly.'), call.=FALSE)
+                })
+        } else { #try to fit exponential
+            if(fit == 'exponential'){
+                mod = tryCatch(nls(Q ~ (a * exp(b * Z)),
+                    start=list(a=0.01, b=1)),
+                    error=function(e){
+                        stop(paste0('Failed to fit rating curve. Try using ',
+                            'fit="power" instead.\n\tAlso ',
+                            'note that you can fit your own curve and then ',
+                            'supply\n\ta and b (of Q=ae^(bZ)) directly.'),
+                            call.=FALSE)
+                    })
+            } else { #fit linear
+                mod = nls(Q ~ a * Z + b, start=list(a=1, b=0))
+            }
+        }
+
+        if(plot == TRUE){
             par(mfrow=c(2,1), mar=c(4,4,1,1), oma=c(0,0,0,0))
-            plot(Z, Q, xlab='Z sample data', ylab='Q sample data',
-                las=1, main='Modeled rating curve')
+            plot(Z, Q, xlab='Z sample data (m)', ylab='Q samp. data (cms)',
+                las=1, main=paste0('Rating curve fit (', fit, ')'))
             lines(Z, predict(mod, list(x=Z)))
         }
 
@@ -209,19 +238,41 @@ estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
         a = params[1,1]
         b = params[2,1]
 
-        cat(paste0('Rating curve parameters:\n\ta = ', a, '\n\tb = ', b))
+        #display info about curve
+        eqns = list('power'='Q=aZ^b', 'exponential'='Q=ae^(bZ)',
+            'linear'='Q=aZ+b')
+        cat(paste0('Rating curve summary\n\tFit: ', fit, '\n\tEquation: ',
+            eqns[fit], '\n\tParameters: a=', round(a, 3), ', b=',
+            round(b, 3), '\n'))
+        maxZ = round(max(Z, na.rm=TRUE), 2)
+        maxD = round(max(depth, na.rm=TRUE), 2)
+        if(maxD > maxZ){
+            warning(paste0('Max observed ', tolower(dep_or_lvl), ' = ',
+                maxD, '. Max observed input Z = ', maxZ, '.\n\tDischarge ',
+                'estimates for ', tolower(dep_or_lvl), ' > ', maxZ,
+                ' may be untrustworthy.'), call.=FALSE)
+        }
 
     } #else a and b have been supplied directly
 
     #estimate discharge using a and b params from rating curve
-    dd$Discharge_m3s = a * depth^b
+    if(fit == 'power'){
+        discharge = a * depth^b
+    } else {
+        if(fit == 'exponential'){
+            discharge = a * exp(b * depth)
+        } else {
+            discharge = a * depth + b
+        }
+    }
 
     if(plot){
-        plot(depth, dd$Discharge_m3s, xlab=paste(dep_or_lvl, 'series data'),
-            yab='Estimated discharge', main='Rating curve prediction', las=1)
+        plot(depth, discharge, xlab=paste(dep_or_lvl, 'series data (m)'),
+            ylab='Est. Q (cms)', main='Rating curve prediction', las=1)
     }
-    par = defpar
+    suppressWarnings(par(defpar))
 
+    return(discharge)
 }
 
 # rm_flagged=list('Bad Data', 'Questionable')
@@ -229,7 +280,8 @@ estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
 # d=streampulse_data; type='bayes'; model='streamMetabolizer'; interval='30 min'; fillgaps='interpolation'
 prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     interval='15 min', rm_flagged='none', fillgaps='interpolation',
-    zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=NULL, b=NULL),
+    zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=NULL, b=NULL,
+        fit='power', plot=TRUE),
     estimate_areal_depth=TRUE, ...){
     # zq_curve=list(Z=NULL, Q=NULL, a=NULL, b=NULL), ...){
 
@@ -273,11 +325,12 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     }
 
     ab_supplied = zq_supplied = FALSE
-    using_zq_curve = !all(unlist(lapply(zq_curve, is.null)))
+    using_zq_curve = !all(unlist(lapply(zq_curve[c('sensor_height',
+        'a','b','Z','Q')], is.null)))
     if(using_zq_curve){
 
         #unpack arguments supplied to zq_curve
-        sensor_height = Z = Q = a = b = NULL
+        sensor_height = Z = Q = a = b = fit = plot = NULL
         if(!is.null(zq_curve$sensor_height)){
             sensor_height = zq_curve$sensor_height
         }
@@ -285,6 +338,14 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         if(!is.null(zq_curve$Q)) Q = zq_curve$Q
         if(!is.null(zq_curve$a)) a = zq_curve$a
         if(!is.null(zq_curve$b)) b = zq_curve$b
+        if(!is.null(zq_curve$fit)){
+            fit = zq_curve$fit
+            if(! fit %in% c('power', 'exponential', 'linear')){
+                stop(paste0('Argument to "fit" must be one of: "power", ',
+                    '"exponential", "linear".'), call.=FALSE)
+            }
+        }
+        if(!is.null(zq_curve$plot)) plot = zq_curve$plot
 
         # message(paste0('NOTE: You have specified arguments to zq_curve.\n\t',
         #     'These are only needed if time-series data for discharge cannot',
@@ -303,8 +364,8 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         } else {
             if(!ab_supplied & !zq_supplied){
                 stop(paste0('Argument zq_curve must include either Z and Q as ',
-                    'vectors of data\n\tor a and b as parameters of Q=a*Z^b.'),
-                    call.=FALSE)
+                    'vectors of data\n\tor a and b as parameters of a rating ',
+                    'curve.'), call.=FALSE)
             }
         }
     }
@@ -503,15 +564,18 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
             '\n\tdischarge time-series data.'), call.=FALSE)
     }
     if(zq_supplied){
-        cat(paste0('Modeling discharge from rating curve generated from\n\t',
-            'supplied Z and Q samples.\n'))
-        dd$Discharge_m3s = estimate_discharge(Z=Z, Q=Q, sh=sensor_height, dd=dd)
+        cat(paste0('Modeling discharge from rating curve.\n\tCurve will be ',
+            'generated from supplied Z and Q samples.\n'))
+        dd$Discharge_m3s = estimate_discharge(Z=Z, Q=Q, sh=sensor_height,
+            dd=dd, fit=fit, plot=plot)
+        vd = c(vd, 'Discharge_m3s')
     } else {
         if(ab_supplied){
             cat(paste0('Modeling discharge from rating curve determined by',
                 '\n\tsupplied a and b parameters.\n'))
             dd$Discharge_m3s = estimate_discharge(a=a, b=b,
-                sh=sensor_height, dd=dd)
+                sh=sensor_height, dd=dd, fit=fit, plot=plot)
+            vd = c(vd, 'Discharge_m3s')
         }
         # if(ab_supplied & missing_depth){
         #     cat(paste0('Modeling discharge from rating curve determined by',
@@ -591,7 +655,8 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
 
             if(estimate_areal_depth){
                 stop(paste0('Missing discharge and depth data.\n\tNot enough ',
-                    'information to proceed.'), call.=FALSE)
+                    'information to proceed.\n\tMight parameter "zq_curve"',
+                    ' be of service?'), call.=FALSE)
             } else {
                 stop(paste0('Missing depth data.\n\tNot enough information to ',
                     'proceed.\n\tTry setting estimate_areal_depth to TRUE.'),

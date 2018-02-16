@@ -78,6 +78,8 @@ streampulse_data = request_data(sitecode=site_code,
 head(streampulse_data$data)
 unique(streampulse_data$data$variable)
 sum(streampulse_data$data$flagtype != '')
+# streampulse_data$data[streampulse_data$data$variable=='Light_PAR',
+#     c('variable','flagtype')]
 # z = streampulse_data$data
 # z = z$DateTime_UTC[z$variable == 'WaterTemp_C']
 # z = z$DateTime_UTC[z$variable == 'DOsat_pct']
@@ -104,13 +106,24 @@ for(i in plotvars){
 # sval[dis_vals][sval[dis_vals] <= 0] = NA
 # streampulse_data$data$value = sval
 
+
+zq = read.csv('~/Dropbox/streampulse/data/rating_curves/ZQ_data.csv')
+site = 'NHC'
+Z = zq[zq$site == site, 'level_m']
+Q = zq[zq$site == site, 'discharge_cms']
 # dim(streampulse_data$data)
 source('~/git/streampulse/model/sp_functions.R')
-# source('~/git/streampulse/model/gapfill_functions.R')
+source('~/git/streampulse/model/gapfill_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     model=model_name, interval='15 min',
     # model=model_name, interval=interval,
-    rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps)
+    rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps,
+    zq_curve=list(sensor_height=NULL, fit='power',
+    # zq_curve=list(sensor_height=NULL, a=.316, b=9.529, fit='power',
+        plot=TRUE),
+    # zq_curve=list(sensor_height=NULL, Z=Z, Q=Q, a=NULL, b=NULL,
+    #     fit='power', plot=TRUE),
+    estimate_areal_depth=TRUE)
 
 # plot(fitdata$DO.sat, type='l')
 # plot(fitdata$DO.sat, type='l', xlim=c(3625,3645), xaxs='i')
