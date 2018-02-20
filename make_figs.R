@@ -38,6 +38,13 @@ model_name = "streamMetabolizer"
 fillgaps='interpolation'
 interval='15 min'
 #done, ##problem
+site_code = "SE_AbiskoM1"; start_date = "2016-06-28"; end_date = '2016-10-25'
+site_code = "SE_AbiskoM2"; start_date = "2016-06-14"; end_date = '2016-09-22'
+site_code = "SE_AbiskoM6"; start_date = "2016-06-10"; end_date = '2016-10-23'
+site_code = "SE_AbiskoM9"; start_date = "2016-06-15"; end_date = '2016-09-08'
+site_code = "SE_AbiskoM10"; start_date = "2016-06-15"; end_date = '2016-08-16'
+##site_code = "SE_AbiskoM16"; start_date = "2016-05-27"; end_date = '2016-10-30'
+site_code = "SE_AbiskoM17"; start_date = "2016-06-15"; end_date = '2016-09-08'
 ##site_code = "PR_QS"; start_date = "2014-03-10"; end_date = '2015-03-10'#ed "2017-12-20"
 # site_code = "RI_CorkBrk"; start_date = "2015-06-23"; end_date = '2016-06-22'#ed "2017-01-03", sd=2014-06-23
 #site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
@@ -74,7 +81,7 @@ site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
 # source('~/git/streampulse/model/gapfill_functions.R')
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
-    flags=TRUE, token=NULL)
+    flags=TRUE, token='67f2d1a026b6c9e3446e')
 head(streampulse_data$data)
 unique(streampulse_data$data$variable)
 sum(streampulse_data$data$flagtype != '')
@@ -91,7 +98,8 @@ t = as.Date(sort(unique(streampulse_data$data$DateTime_UTC)))
 for(i in plotvars){
     plot(streampulse_data$data$value[which(streampulse_data$data$variable == i)],
         type='l', xlab='', xaxt='n', xaxs='i', las=2)
-    mtext(i, 2, 2.5)
+    lin = ifelse(which(plotvars == i) %% 2 == 0, 2.5, 3)
+    mtext(i, 2, cex=0.6, line=lin)
     if(i == plotvars[length(plotvars)]){
         yearstarts = match(unique(substr(t,1,4)), substr(t,1,4))
         monthstarts = match(unique(substr(t,1,7)), substr(t,1,7))
@@ -113,14 +121,14 @@ Z = zq[zq$site == site, 'level_m']
 Q = zq[zq$site == site, 'discharge_cms']
 # dim(streampulse_data$data)
 source('~/git/streampulse/model/sp_functions.R')
-source('~/git/streampulse/model/gapfill_functions.R')
+# source('~/git/streampulse/model/gapfill_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     model=model_name, interval='15 min',
     # model=model_name, interval=interval,
-    rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps,
-    zq_curve=list(sensor_height=NULL, fit='power',
+    # rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps,
+    # zq_curve=list(sensor_height=NULL, fit='power',
     # zq_curve=list(sensor_height=NULL, a=.316, b=9.529, fit='power',
-        plot=TRUE),
+        # plot=TRUE),
     # zq_curve=list(sensor_height=NULL, Z=Z, Q=Q, a=NULL, b=NULL,
     #     fit='power', plot=TRUE),
     estimate_areal_depth=TRUE)

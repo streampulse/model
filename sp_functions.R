@@ -44,22 +44,25 @@ request_data = function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
         notflagcols = colnames(d$data)[which(!colnames(d$data) %in%
                 c('flagtype','flagcomment'))]
         d$data = cbind(d$data[,notflagcols], d$data[,c('flagtype','flagcomment')])
+
+        #remove unneeded flag table returned by API
+        d$flags = NULL
     }
 
     return(d)
 }
 
-sp_flags = function(d){
-
-  flag_df = map_df(d$flags, data.frame) %>%
-    as_tibble %>%
-    select(id, region, site, variable, flag, startDate, endDate, comment) %>%
-    mutate(startDate = as.POSIXct(startDate, format="%a, %d %b %Y %H:%M:%S", tz="UTC"),
-           endDate = as.POSIXct(endDate, format="%a, %d %b %Y %H:%M:%S", tz="UTC"))
-
-  return(flag_df)
-
-}
+# sp_flags = function(d){
+#
+#   flag_df = map_df(d$flags, data.frame) %>%
+#     as_tibble %>%
+#     select(id, region, site, variable, flag, startDate, endDate, comment) %>%
+#     mutate(startDate = as.POSIXct(startDate, format="%a, %d %b %Y %H:%M:%S", tz="UTC"),
+#            endDate = as.POSIXct(endDate, format="%a, %d %b %Y %H:%M:%S", tz="UTC"))
+#
+#   return(flag_df)
+#
+# }
 
 #verify that datetimes from noaa are in utc and watch out for NA values (-9.96921e+36f)
 # vars=c('windspeed', 'airpressure'); years = 2017
@@ -277,7 +280,9 @@ estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
 
 # rm_flagged=list('Bad Data', 'Questionable')
 # d=streampulse_data; type='bayes'; model='streamMetabolizer'; interval='15 min'; fillgaps='interpolation'
-# d=streampulse_data; type='bayes'; model='streamMetabolizer'; interval='30 min'; fillgaps='interpolation'
+# zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=NULL, b=NULL,
+#     fit='power', plot=TRUE)
+# estimate_areal_depth=TRUE
 prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     interval='15 min', rm_flagged='none', fillgaps='interpolation',
     zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=NULL, b=NULL,
@@ -406,7 +411,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
 
         } else {
 
-            # if consistent, get the sample interval as a difftime object
+            # if consistent, just grab the diff between the first two times
             ints_by_var[i,2] = difftime(dt_by_var[2],  dt_by_var[1],
                 units='mins')
         }
@@ -418,6 +423,8 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         message(paste0('Multiple sample intervals detected across variables (',
             paste(unique(ints_by_var$int), collapse=' min, '),
             ' min).\n\tUsing ', input_int, ' so as not to introduce gaps.'))
+    } else {
+        input_int = ints_by_var$int[1] #all the same
     }
 
     #remove (replace with NA) flagged data if desired
@@ -703,8 +710,12 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
             "temp.water","light")
         if(type=="bayes") model_variables = c(model_variables,"discharge")
     }
+
     if(!all(model_variables %in% colnames(dd))){
-        stop("Insufficient data to fit this model.", call.=FALSE)
+        missing_vars = model_variables[which(! model_variables %in% g)]
+        stop(paste0('Insufficient data to fit this model.\n\t',
+            'Missing variable(s): ', paste0(missing_vars, collapse=', ')),
+            call.=FALSE)
     }
 
     # Structure data, add class for model name
