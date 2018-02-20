@@ -497,6 +497,15 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         }
     }
 
+    #same for discharge
+    if('Discharge_m3s' %in% vd){
+        if(any(na.omit(dd$Discharge_m3s) <= 0)){
+            warning('Discharge values <= 0 detected. Replacing with 0.000001.',
+                call.=FALSE)
+            dd$Discharge_m3s[dd$Discharge_m3s <= 0] = 0.000001
+        }
+    }
+
     # check if desired interval is compatible with sample interval
     int_parts = strsplit(interval, ' ')[[1]] #get num and str components
     desired_int = as.difftime(as.numeric(int_parts[1]),

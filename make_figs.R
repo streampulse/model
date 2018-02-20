@@ -125,7 +125,7 @@ source('~/git/streampulse/model/sp_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     model=model_name, interval='15 min',
     # model=model_name, interval=interval,
-    # rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps,
+    rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps,
     # zq_curve=list(sensor_height=NULL, fit='power',
     # zq_curve=list(sensor_height=NULL, a=.316, b=9.529, fit='power',
         # plot=TRUE),
@@ -143,9 +143,9 @@ fitdata = prep_metabolism(d=streampulse_data, type=model_type,
 
 
 plotvars = colnames(fitdata)[! colnames(fitdata) %in% c('solar.time')]
-# pdf(width=5, height=9,
-#     file=paste0('~/Desktop/untracked/sm_figs/input_',
-#     site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
+pdf(width=5, height=9,
+    file=paste0('~/Desktop/untracked/sm_figs/input_',
+    site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
 par(mfrow=c(length(plotvars),1), mar=c(0,0,0,0), oma=c(4,4,.5,.5))
 t = as.Date(fitdata$solar.time)
 for(i in plotvars){
@@ -158,7 +158,7 @@ for(i in plotvars){
         axis(1, monthstarts, substr(t[monthstarts],6,7))
     }
 }
-# dev.off()
+dev.off()
 
 modelfit = fit_metabolism(fitdata)
 
