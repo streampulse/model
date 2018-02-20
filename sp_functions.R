@@ -712,9 +712,9 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     }
 
     if(!all(model_variables %in% colnames(dd))){
-        missing_vars = model_variables[which(! model_variables %in% g)]
+        missing = model_variables[which(! model_variables %in% colnames(dd))]
         stop(paste0('Insufficient data to fit this model.\n\t',
-            'Missing variable(s): ', paste0(missing_vars, collapse=', ')),
+            'Missing variable(s): ', paste0(missing, collapse=', ')),
             call.=FALSE)
     }
 
