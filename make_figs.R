@@ -38,7 +38,7 @@ model_name = "streamMetabolizer"
 fillgaps='interpolation'
 interval='15 min'
 #done, ##problem
-site_code = "SE_AbiskoM1"; start_date = "2016-06-28"; end_date = '2016-10-25'
+# site_code = "SE_AbiskoM1"; start_date = "2016-06-28"; end_date = '2016-10-25'
 site_code = "SE_AbiskoM2"; start_date = "2016-06-14"; end_date = '2016-09-22'
 site_code = "SE_AbiskoM6"; start_date = "2016-06-10"; end_date = '2016-10-23'
 site_code = "SE_AbiskoM9"; start_date = "2016-06-15"; end_date = '2016-09-08'
@@ -182,7 +182,7 @@ saveRDS(modelfit, paste('~/Desktop/untracked/sm_out/fit',
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
     # model_type, model_name, substr(interval,1,2), fillgaps, sep='_'))
 # modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_SC_2017-02-08_2017-03-28_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
-modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_LV_2017-08-07_2017-12-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
+# modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_LV_2017-08-07_2017-12-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
 
 #check daiy k-er correlation
 daily_er = modelfit@fit$daily$ER_daily_mean
