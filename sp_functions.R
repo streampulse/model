@@ -626,7 +626,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     if("Light_PAR" %in% vd){ # fill in with observations if available
         dd$light[!is.na(dd$Light_PAR)] = dd$Light_PAR[!is.na(dd$Light_PAR)]
     }else{
-      cat("Estimating PAR based on latitude and time\n")
+      cat("Estimating PAR based on latitude and time.\n")
     }
 
     # impute missing data. code found in gapfill_functions.R

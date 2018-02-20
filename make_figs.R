@@ -46,12 +46,12 @@ site_code = "SE_AbiskoM10"; start_date = "2016-06-15"; end_date = '2016-08-16'
 ##site_code = "SE_AbiskoM16"; start_date = "2016-05-27"; end_date = '2016-10-30'
 site_code = "SE_AbiskoM17"; start_date = "2016-06-15"; end_date = '2016-09-08'
 ##site_code = "PR_QS"; start_date = "2014-03-10"; end_date = '2015-03-10'#ed "2017-12-20"
-# site_code = "RI_CorkBrk"; start_date = "2015-06-23"; end_date = '2016-06-22'#ed "2017-01-03", sd=2014-06-23
+#site_code = "RI_CorkBrk"; start_date = "2015-06-23"; end_date = '2016-06-22'#ed "2017-01-03", sd=2014-06-23
 #site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
 #site_code = "CT_HUBB"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
-# site_code = "CT_FARM"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
+#site_code = "CT_FARM"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
 #site_code = "CT_Unio"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
-# site_code = "VT_Pass"; start_date = "2015-06-26"; end_date = '2016-06-25' #ed 2016-10-27
+#site_code = "VT_Pass"; start_date = "2015-06-26"; end_date = '2016-06-25' #ed 2016-10-27
 #site_code = "VT_POPE"; start_date = "2015-06-03"; end_date = '2016-06-02' #ed 2016-11-11
 #site_code = "VT_MOOS"; start_date = "2015-06-03"; end_date = '2016-11-11' #ed 2016-11-11
 ##site_code = "PR_Icacos"; start_date = "2016-06-09"; end_date = '2016-12-15'
@@ -125,7 +125,7 @@ source('~/git/streampulse/model/sp_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     model=model_name, interval='15 min',
     # model=model_name, interval=interval,
-    # rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps,
+    rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps,
     # zq_curve=list(sensor_height=NULL, fit='power',
     # zq_curve=list(sensor_height=NULL, a=.316, b=9.529, fit='power',
         # plot=TRUE),
