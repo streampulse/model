@@ -77,14 +77,16 @@ site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
 # site_code = 'WI_BRW'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
 
 #run ####
-# source('~/git/streampulse/model/sp_functions.R')
+source('~/git/streampulse/model/sp_functions.R')
 # source('~/git/streampulse/model/gapfill_functions.R')
 streampulse_data = request_data(sitecode=site_code,
-    startdate=start_date, enddate=end_date, variables=NULL,
+    startdate=start_date, variables=NULL,
+    # startdate=start_date, enddate=end_date, variables=NULL,
     flags=TRUE, token='67f2d1a026b6c9e3446e')
 head(streampulse_data$data)
 unique(streampulse_data$data$variable)
 sum(streampulse_data$data$flagtype != '')
+nrow(streampulse_data$data)
 # streampulse_data$data[streampulse_data$data$variable=='Light_PAR',
 #     c('variable','flagtype')]
 # z = streampulse_data$data
