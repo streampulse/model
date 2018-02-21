@@ -45,6 +45,8 @@ site_code = "SE_AbiskoM9"; start_date = "2016-06-15"; end_date = '2016-09-08'
 site_code = "SE_AbiskoM10"; start_date = "2016-06-15"; end_date = '2016-08-16'
 ##site_code = "SE_AbiskoM16"; start_date = "2016-05-27"; end_date = '2016-10-30'
 site_code = "SE_AbiskoM17"; start_date = "2016-06-15"; end_date = '2016-09-08'
+site_code = "SE_M18"; start_date = "2016-06-08"; end_date = '2016-10-22'
+site_code = "SE_M6"; start_date = "2016-06-08"; end_date = '2016-10-22'
 ##site_code = "PR_QS"; start_date = "2014-03-10"; end_date = '2015-03-10'#ed "2017-12-20"
 # site_code = "RI_CorkBrk"; start_date = "2015-06-23"; end_date = '2016-06-22'#ed "2017-01-03", sd=2014-06-23
 #site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
@@ -81,7 +83,8 @@ site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
 # source('~/git/streampulse/model/gapfill_functions.R')
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
-    flags=TRUE, token='67f2d1a026b6c9e3446e')
+    # flags=TRUE, token='67f2d1a026b6c9e3446e') #gerard
+    flags=TRUE, token='7e4cd63a38de5d4a4715') #maria
 head(streampulse_data$data)
 unique(streampulse_data$data$variable)
 sum(streampulse_data$data$flagtype != '')
@@ -182,9 +185,10 @@ saveRDS(modelfit, paste('~/Desktop/untracked/sm_out/fit',
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
     # model_type, model_name, substr(interval,1,2), fillgaps, sep='_'))
 # modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_SC_2017-02-08_2017-03-28_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
-modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_LV_2017-08-07_2017-12-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
+modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_SE_AbiskoM10_2016-06-15_2016-08-16_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
 
 #check daiy k-er correlation
+par(mfrow=c(1,1))
 daily_er = modelfit@fit$daily$ER_daily_mean
 daily_k = modelfit@fit$daily$K600_daily_mean
 plot(daily_k, daily_er)
