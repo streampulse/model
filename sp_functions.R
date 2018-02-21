@@ -1,6 +1,6 @@
 
 request_data = function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
-    flags=FALSE, token=NULL){
+    flags=TRUE, token=NULL){
     # Download data from the streampulse platform
 
     # sitecode is a site name
@@ -8,7 +8,7 @@ request_data = function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
     # variables is a vector of c('variable_one', ..., 'variable_n')
     # flags is logical, include flag data or not
 
-    # Basic checks; make list of variables
+    #basic checks
     if(length(sitecode)>1){
         stop("Please only enter one site to model.", call.=FALSE)
     }
@@ -17,16 +17,29 @@ request_data = function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
             stop("Start date is after end date.", call.=FALSE)
         }
     }
-    variables = c("DO_mgL","DOsat_pct","satDO_mgL","Level_m","WaterPres_kPa",
-        "Depth_m","WaterTemp_C","Light_PAR","AirPres_kPa","Discharge_m3s")
+    if(!all(is.null(variables)) & !all(is.character(variables))){
+        stop('Argument to "variables" must be a character vector.', call.=FALSE)
+    }
+    if(all(is.null(variables))){
+        variables = c('DO_mgL','DOsat_pct','satDO_mgL','WaterPres_kPa',
+            'Depth_m','WaterTemp_C','Light_PAR','AirPres_kPa','Discharge_m3s')
+        # 'Level_m', #level is currently not used, but could be soon
+        cat(paste0('Requesting all variables potentially useful for ',
+            'metabolism modeling.\n'))
+    } else {
+        variables = unique(variables) #just makin' sure
+        message(paste0('You may omit the "variables" parameter to ',
+            'automatically retrieve\n\tall variables necessary for metabolism ',
+            'modeling.'))
+    }
 
     #assemble url based on user input
     u = paste0("http://data.streampulse.org/api?sitecode=",sitecode)
     if(!is.null(startdate)) u = paste0(u,"&startdate=",startdate)
     if(!is.null(enddate)) u = paste0(u,"&enddate=",enddate)
-    if(!is.null(variables)) u = paste0(u,"&variables=",paste0(variables, collapse=","))
+    u = paste0(u,"&variables=",paste0(variables, collapse=","))
     if(flags) u = paste0(u,"&flags=true")
-    cat(paste0('URL: ',u,'\n'))
+    cat(paste0('\nAPI call: ',u,'\n\n'))
 
     #retrieve json; read into r object; format date
     if(is.null(token)){
@@ -49,20 +62,45 @@ request_data = function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
         d$flags = NULL
     }
 
+    #format and print variables acquired
+    retrieved_vars = unique(d$data$variable)
+    n_print_batches = ceiling(length(retrieved_vars) / 5)
+    cat('Retrieved the following variables:\n')
+    for(b in 1:n_print_batches){
+
+        s = (5 * (b - 1)) + 1 #first index to grab
+
+        if(b == n_print_batches){
+            e = length(retrieved_vars)
+        } else {
+            e = s + 4
+        }
+
+        cat('\t', paste0(retrieved_vars[s:e], collapse=', '), '\n')
+    }
+
+    #do the same for those not acquired (if necessary)
+    missing_vars = variables[! variables %in% retrieved_vars]
+    if(length(missing_vars)){
+
+        n_print_batches = ceiling(length(missing_vars) / 5)
+        cat('Could not find:\n')
+        for(b in 1:n_print_batches){
+
+            s = (5 * (b - 1)) + 1 #first index to grab
+
+            if(b == n_print_batches){
+                e = length(missing_vars)
+            } else {
+                e = s + 4
+            }
+
+            cat('\t', paste0(missing_vars[s:e], collapse=', '), '\n')
+        }
+    }
+
     return(d)
 }
-
-# sp_flags = function(d){
-#
-#   flag_df = map_df(d$flags, data.frame) %>%
-#     as_tibble %>%
-#     select(id, region, site, variable, flag, startDate, endDate, comment) %>%
-#     mutate(startDate = as.POSIXct(startDate, format="%a, %d %b %Y %H:%M:%S", tz="UTC"),
-#            endDate = as.POSIXct(endDate, format="%a, %d %b %Y %H:%M:%S", tz="UTC"))
-#
-#   return(flag_df)
-#
-# }
 
 #verify that datetimes from noaa are in utc and watch out for NA values (-9.96921e+36f)
 # vars=c('windspeed', 'airpressure'); years = 2017
@@ -635,7 +673,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     if("Light_PAR" %in% vd){ # fill in with observations if available
         dd$light[!is.na(dd$Light_PAR)] = dd$Light_PAR[!is.na(dd$Light_PAR)]
     }else{
-      cat("Estimating PAR based on latitude and time\n")
+      cat("Estimating PAR based on latitude and time.\n")
     }
 
     # impute missing data. code found in gapfill_functions.R

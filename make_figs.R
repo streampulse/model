@@ -38,7 +38,7 @@ model_name = "streamMetabolizer"
 fillgaps='interpolation'
 interval='15 min'
 #done, ##problem
-site_code = "SE_AbiskoM1"; start_date = "2016-06-28"; end_date = '2016-10-25'
+# site_code = "SE_AbiskoM1"; start_date = "2016-06-28"; end_date = '2016-10-25'
 site_code = "SE_AbiskoM2"; start_date = "2016-06-14"; end_date = '2016-09-22'
 site_code = "SE_AbiskoM6"; start_date = "2016-06-10"; end_date = '2016-10-23'
 site_code = "SE_AbiskoM9"; start_date = "2016-06-15"; end_date = '2016-09-08'
@@ -48,12 +48,12 @@ site_code = "SE_AbiskoM17"; start_date = "2016-06-15"; end_date = '2016-09-08'
 site_code = "SE_M18"; start_date = "2016-06-08"; end_date = '2016-10-22'
 site_code = "SE_M6"; start_date = "2016-06-08"; end_date = '2016-10-22'
 ##site_code = "PR_QS"; start_date = "2014-03-10"; end_date = '2015-03-10'#ed "2017-12-20"
-# site_code = "RI_CorkBrk"; start_date = "2015-06-23"; end_date = '2016-06-22'#ed "2017-01-03", sd=2014-06-23
+#site_code = "RI_CorkBrk"; start_date = "2015-06-23"; end_date = '2016-06-22'#ed "2017-01-03", sd=2014-06-23
 #site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
 #site_code = "CT_HUBB"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
-# site_code = "CT_FARM"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
+#site_code = "CT_FARM"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
 #site_code = "CT_Unio"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
-# site_code = "VT_Pass"; start_date = "2015-06-26"; end_date = '2016-06-25' #ed 2016-10-27
+#site_code = "VT_Pass"; start_date = "2015-06-26"; end_date = '2016-06-25' #ed 2016-10-27
 #site_code = "VT_POPE"; start_date = "2015-06-03"; end_date = '2016-06-02' #ed 2016-11-11
 #site_code = "VT_MOOS"; start_date = "2015-06-03"; end_date = '2016-11-11' #ed 2016-11-11
 ##site_code = "PR_Icacos"; start_date = "2016-06-09"; end_date = '2016-12-15'
@@ -79,15 +79,17 @@ site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
 # site_code = 'WI_BRW'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
 
 #run ####
-# source('~/git/streampulse/model/sp_functions.R')
+source('~/git/streampulse/model/sp_functions.R')
 # source('~/git/streampulse/model/gapfill_functions.R')
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
     # flags=TRUE, token='67f2d1a026b6c9e3446e') #gerard
     flags=TRUE, token='7e4cd63a38de5d4a4715') #maria
+    flags=TRUE, token='67f2d1a026b6c9e3446e')
 head(streampulse_data$data)
 unique(streampulse_data$data$variable)
 sum(streampulse_data$data$flagtype != '')
+nrow(streampulse_data$data)
 # streampulse_data$data[streampulse_data$data$variable=='Light_PAR',
 #     c('variable','flagtype')]
 # z = streampulse_data$data
@@ -185,7 +187,11 @@ saveRDS(modelfit, paste('~/Desktop/untracked/sm_out/fit',
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
     # model_type, model_name, substr(interval,1,2), fillgaps, sep='_'))
 # modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_SC_2017-02-08_2017-03-28_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
+<<<<<<< HEAD
 modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_SE_AbiskoM10_2016-06-15_2016-08-16_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
+=======
+# modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_LV_2017-08-07_2017-12-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
+>>>>>>> a75c7a688b9170eb0cb24270e7d375ec0beac74b
 
 #check daiy k-er correlation
 par(mfrow=c(1,1))
