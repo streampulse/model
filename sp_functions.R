@@ -535,6 +535,15 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         }
     }
 
+    #same for discharge
+    if('Discharge_m3s' %in% vd){
+        if(any(na.omit(dd$Discharge_m3s) <= 0)){
+            warning('Discharge values <= 0 detected. Replacing with 0.000001.',
+                call.=FALSE)
+            dd$Discharge_m3s[dd$Discharge_m3s <= 0] = 0.000001
+        }
+    }
+
     # check if desired interval is compatible with sample interval
     int_parts = strsplit(interval, ' ')[[1]] #get num and str components
     desired_int = as.difftime(as.numeric(int_parts[1]),
@@ -750,9 +759,9 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     }
 
     if(!all(model_variables %in% colnames(dd))){
-        missing_vars = model_variables[which(! model_variables %in% g)]
+        missing = model_variables[which(! model_variables %in% colnames(dd))]
         stop(paste0('Insufficient data to fit this model.\n\t',
-            'Missing variable(s): ', paste0(missing_vars, collapse=', ')),
+            'Missing variable(s): ', paste0(missing, collapse=', ')),
             call.=FALSE)
     }
 
