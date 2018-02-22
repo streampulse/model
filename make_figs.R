@@ -38,7 +38,7 @@ model_name = "streamMetabolizer"
 fillgaps='interpolation'
 interval='15 min'
 #done, ##problem
-# site_code = "SE_AbiskoM1"; start_date = "2016-06-28"; end_date = '2016-10-25'
+site_code = "SE_AbiskoM1"; start_date = "2016-06-28"; end_date = '2016-10-25'
 site_code = "SE_AbiskoM2"; start_date = "2016-06-14"; end_date = '2016-09-22'
 site_code = "SE_AbiskoM6"; start_date = "2016-06-10"; end_date = '2016-10-23'
 site_code = "SE_AbiskoM9"; start_date = "2016-06-15"; end_date = '2016-09-08'
@@ -83,9 +83,8 @@ source('~/git/streampulse/model/sp_functions.R')
 # source('~/git/streampulse/model/gapfill_functions.R')
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
-    # flags=TRUE, token='67f2d1a026b6c9e3446e') #gerard
-    flags=TRUE, token='7e4cd63a38de5d4a4715') #maria
-    flags=TRUE, token='67f2d1a026b6c9e3446e')
+    flags=TRUE, token='67f2d1a026b6c9e3446e') #gerard
+    # flags=TRUE, token='7e4cd63a38de5d4a4715') #maria
 head(streampulse_data$data)
 unique(streampulse_data$data$variable)
 sum(streampulse_data$data$flagtype != '')
@@ -187,11 +186,7 @@ saveRDS(modelfit, paste('~/Desktop/untracked/sm_out/fit',
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
     # model_type, model_name, substr(interval,1,2), fillgaps, sep='_'))
 # modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_SC_2017-02-08_2017-03-28_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
-<<<<<<< HEAD
-modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_SE_AbiskoM10_2016-06-15_2016-08-16_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
-=======
 # modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_LV_2017-08-07_2017-12-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
->>>>>>> a75c7a688b9170eb0cb24270e7d375ec0beac74b
 
 #check daiy k-er correlation
 par(mfrow=c(1,1))
