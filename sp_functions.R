@@ -322,7 +322,8 @@ estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
 #     fit='power', plot=TRUE)
 # estimate_areal_depth=TRUE
 prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
-    interval='15 min', rm_flagged='none', fillgaps='interpolation',
+    interval='15 min', rm_flagged=list('Bad Data', 'Questionable'),
+    fillgaps='interpolation',
     zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=NULL, b=NULL,
         fit='power', plot=TRUE),
     estimate_areal_depth=TRUE, ...){
@@ -556,6 +557,12 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
             ' min).\n\tGaps will be introduced!')) #error occurs, so using message
     }
 
+    #convert user-specified interval to minutes if it's in hours (because
+    #fractional hours wont work with seq.POSIXct below)
+    if(int_parts[2] == 'hour'){
+        interval = paste(as.numeric(int_parts[1]) * 60, 'min')
+    }
+
     #coerce to desired time interval. If multiple sample intervals are found...
     if(length(unique(ints_by_var$int)) > 1){
 
@@ -569,7 +576,6 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
                 stop(paste0('Unable to coerce data to desired time interval.',
                     '\n\tTry specifying a different interval.'), call.=FALSE)
             }
-
             alldates = data.frame(DateTime_UTC=seq.POSIXt(dd[starting_row,1],
                 dd[nrow(dd),1], by=interval))
             dd_temp = left_join(alldates, dd, by='DateTime_UTC')
