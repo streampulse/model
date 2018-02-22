@@ -69,10 +69,10 @@ site_code = "SE_M6"; start_date = "2016-06-08"; end_date = '2016-10-22'
 #site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03" #sd 11-13
 #site_code = "AZ_SC"; start_date = "2017-02-08"; end_date = "2017-03-28"
 # site_code = "AZ_WB"; start_date = "2017-08-04"; end_date = "2017-12-27"
-site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
-##site_code = "NC_UEno"; start_date = "2016-07-12"; end_date = "2017-08-30"
+# site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
+site_code = "NC_UEno"; start_date = "2016-07-12"; end_date = "2017-07-11" #2017-08-16
 ##site_code = "NC_Stony"; start_date = "2016-06-30"; end_date = "2017-08-09"
-site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
+# site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
 ##site_code = "NC_UNHC"; start_date = "2016-07-12"; end_date = "2017-08-30"
 ##site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
 # site_code = 'WI_BEC'; start_date = '2017-01-26'; end_date = '2018-01-25' #2009-10-02; 2018-01-25
@@ -81,11 +81,11 @@ site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
 #run ####
 source('~/git/streampulse/model/sp_functions.R')
 # source('~/git/streampulse/model/gapfill_functions.R')
+
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
     # flags=TRUE, token='67f2d1a026b6c9e3446e') #gerard
-    flags=TRUE, token='7e4cd63a38de5d4a4715') #maria
-    flags=TRUE, token='67f2d1a026b6c9e3446e')
+    # flags=TRUE, token='7e4cd63a38de5d4a4715') #maria
 head(streampulse_data$data)
 unique(streampulse_data$data$variable)
 sum(streampulse_data$data$flagtype != '')
