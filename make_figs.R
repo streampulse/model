@@ -71,7 +71,7 @@ site_code = "SE_M6"; start_date = "2016-06-08"; end_date = '2016-10-22'
 # site_code = "AZ_WB"; start_date = "2017-08-04"; end_date = "2017-12-27"
 # site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
 site_code = "NC_UEno"; start_date = "2016-07-12"; end_date = "2017-07-11" #2017-08-16
-site_code = "NC_Stony"; start_date = "2016-06-30"; end_date = "2017-07-29" #2017-08-09
+site_code = "NC_Stony"; start_date = "2016-12-01"; end_date = "2017-06-01" #2016-06-30; 2017-08-09
 ##site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
 ##site_code = "NC_UNHC"; start_date = "2016-07-12"; end_date = "2017-08-30"
 ##site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
