@@ -3,7 +3,8 @@ rm(list=ls()); cat('\014') #clear environment and console
 #setup ####
 #install packages from CRAN if necessary
 package_list <- c('coda','plyr','dplyr','httr','jsonlite','R2jags',
-    'tidyr','imputeTS','accelerometry','geoknife','MetaboPlots','zoo')
+    'tidyr','imputeTS','accelerometry','MetaboPlots','zoo',
+    'geosphere','readr','tibble') #geoknife
 new_packages <- package_list[!(package_list %in% installed.packages()[,"Package"])]
 if(length(new_packages)) install.packages(new_packages)
 
@@ -70,7 +71,7 @@ site_code = "SE_M6"; start_date = "2016-06-08"; end_date = '2016-10-22'
 #site_code = "AZ_SC"; start_date = "2017-02-08"; end_date = "2017-03-28"
 # site_code = "AZ_WB"; start_date = "2017-08-04"; end_date = "2017-12-27"
 # site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
-site_code = "NC_UEno"; start_date = "2016-07-12"; end_date = "2017-07-11" #2017-08-16
+site_code = "NC_UEno"; start_date = "2017-01-01"; end_date = "2017-12-31" #2016-07-12; 2018-02-09
 site_code = "NC_Stony"; start_date = "2016-12-01"; end_date = "2017-06-01" #2016-06-30; 2017-08-09
 ##site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
 ##site_code = "NC_UNHC"; start_date = "2016-07-12"; end_date = "2017-08-30"
@@ -79,7 +80,7 @@ site_code = "NC_Stony"; start_date = "2016-12-01"; end_date = "2017-06-01" #2016
 # site_code = 'WI_BRW'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
 
 #run ####
-source('~/git/streampulse/model/sp_functions.R')
+# source('~/git/streampulse/model/sp_functions.R')
 # source('~/git/streampulse/model/gapfill_functions.R')
 
 streampulse_data = request_data(sitecode=site_code,
@@ -129,11 +130,6 @@ Q = zq[zq$site == site, 'discharge_cms']
 # source('~/git/streampulse/model/sp_functions.R')
 # source('~/git/streampulse/model/gapfill_functions.R')
 
-lat = streampulse_data$sites$lat
-long = streampulse_data$sites$lon
-x = FindandCollect_airpres(lat, long, start_date, end_date)
-head(x)
-
 source('~/git/streampulse/model/sp_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     model=model_name, interval='15 min',
@@ -147,6 +143,8 @@ fitdata = prep_metabolism(d=streampulse_data, type=model_type,
         # fit='linear', plot=TRUE),
         fit='power', plot=TRUE),
     estimate_areal_depth=TRUE)
+
+# apply(fitdata[,-1], 2, function(x) sum(is.infinite(x)))
 
 # plot(fitdata$DO.sat, type='l')
 # plot(fitdata$DO.sat, type='l', xlim=c(3625,3645), xaxs='i')
@@ -175,6 +173,7 @@ for(i in plotvars){
 }
 dev.off()
 
+source('~/git/streampulse/model/sp_functions.R')
 modelfit = fit_metabolism(fitdata)
 
 max(modelfit@fit$daily$K600_daily_mean, na.rm=TRUE) #shoudnt be over 90
