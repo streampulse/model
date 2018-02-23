@@ -71,8 +71,8 @@ site_code = "SE_M6"; start_date = "2016-06-08"; end_date = '2016-10-22'
 # site_code = "AZ_WB"; start_date = "2017-08-04"; end_date = "2017-12-27"
 # site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
 site_code = "NC_UEno"; start_date = "2016-07-12"; end_date = "2017-07-11" #2017-08-16
-##site_code = "NC_Stony"; start_date = "2016-06-30"; end_date = "2017-08-09"
-# site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
+site_code = "NC_Stony"; start_date = "2016-06-30"; end_date = "2017-07-29" #2017-08-09
+##site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
 ##site_code = "NC_UNHC"; start_date = "2016-07-12"; end_date = "2017-08-30"
 ##site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
 # site_code = 'WI_BEC'; start_date = '2017-01-26'; end_date = '2018-01-25' #2009-10-02; 2018-01-25
@@ -84,7 +84,8 @@ source('~/git/streampulse/model/sp_functions.R')
 
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
-    flags=TRUE, token='67f2d1a026b6c9e3446e') #gerard
+    flags=TRUE)
+    # flags=TRUE, token='67f2d1a026b6c9e3446e') #gerard
     # flags=TRUE, token='7e4cd63a38de5d4a4715') #maria
 head(streampulse_data$data)
 unique(streampulse_data$data$variable)
@@ -121,7 +122,7 @@ for(i in plotvars){
 
 
 zq = read.csv('~/Dropbox/streampulse/data/rating_curves/ZQ_data.csv')
-site = 'NHC'
+site = strsplit(site_code, '_')[[1]][2]
 Z = zq[zq$site == site, 'level_m']
 Q = zq[zq$site == site, 'discharge_cms']
 # dim(streampulse_data$data)
@@ -134,8 +135,8 @@ fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     # zq_curve=list(sensor_height=NULL, fit='power',
     # zq_curve=list(sensor_height=NULL, a=.316, b=9.529, fit='power',
         # plot=TRUE),
-    # zq_curve=list(sensor_height=NULL, Z=Z, Q=Q, a=NULL, b=NULL,
-    #     fit='power', plot=TRUE),
+    zq_curve=list(sensor_height=NULL, Z=Z, Q=Q, a=NULL, b=NULL,
+        fit='power', plot=TRUE),
     estimate_areal_depth=TRUE)
 
 # plot(fitdata$DO.sat, type='l')
