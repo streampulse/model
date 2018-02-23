@@ -105,42 +105,66 @@ request_data = function(sitecode, startdate=NULL, enddate=NULL, variables=NULL,
 #verify that datetimes from noaa are in utc and watch out for NA values (-9.96921e+36f)
 # vars=c('windspeed', 'airpressure'); years = 2017
 # d = d2
-retrieve_air_pressure = function(sites, dd){
+retrieve_air_pressure = function(md, dd){
 
-    # sites2 <<- sites
+    # md2 <<- md
     # dd2 <<- dd
+    # stop('a')
+    # md = md2
+    # dd = dd2
 
-    #format site data for use with geoknife package
-    station = as.data.frame(t(sites[,c('lon','lat')]))
-    station = simplegeom(station)
+    lat = md$lat
+    long = md$lon
+    start_datetime = dd$DateTime_UTC[1]
+    end_datetime = dd$DateTime_UTC[nrow(dd)]
 
-    years = unique(substr(dd$DateTime_UTC, 1, 4))
-    cat('Missing DO saturation, so acquiring air pressure',
-        'data for', length(years),
-        'year(s). Each year may take a few minutes.\n')
+    cat('Collecting air pressure data from NCDC (NOAA).\n')
+    capture.output(df = suppressWarnings(FindandCollect_airpres(lat, long,
+        start_datetime, end_datetime)))
+    cat('\n')
 
-    #retrieve air pressure data from noaa
-    pres = data.frame(datetime=.POSIXct(character()), pres=numeric())
-    for(i in 1:length(years)){
-
-        fabric = webdata(url=paste0('https://www.esrl.noaa.gov/psd/th',
-            'redds/dodsC/Datasets/ncep.reanalysis/surface/pres.sfc.',
-            years[i], '.nc'), variables='pres')
-        noaa_job = geoknife(stencil=station, fabric=fabric, wait=TRUE)
-        noaa_data = result(noaa_job, with.units=TRUE)
-
-        pres = rbind(pres, noaa_data[,c('DateTime','1')])
-
-        cat('Year', i, 'complete.\n')
-    }
-
-    pres = data.frame(pres)
-
-    df_out = pres %>% mutate(AirPres_kPa = X1 / 1000,
-            DateTime_UTC=DateTime) %>% select(AirPres_kPa, DateTime_UTC)
+    df_out = df %>% mutate(AirPres_kPa = air_kPa) %>%
+        select(DateTime_UTC, AirPres_kPa) %>% as.data.frame()
 
     return(df_out)
 }
+
+# retrieve_air_pressure_old = function(sites, dd){
+#
+#     # sites2 <<- sites
+#     # dd2 <<- dd
+#
+#     #format site data for use with geoknife package
+#     station = as.data.frame(t(sites[,c('lon','lat')]))
+#     station = simplegeom(station)
+#
+#     years = unique(substr(dd$DateTime_UTC, 1, 4))
+#     cat('Missing DO saturation, so acquiring air pressure',
+#         'data for', length(years),
+#         'year(s). Each year may take a few minutes.\n')
+#
+#     #retrieve air pressure data from noaa
+#     pres = data.frame(datetime=.POSIXct(character()), pres=numeric())
+#     for(i in 1:length(years)){
+#
+#         fabric = webdata(url=paste0('https://www.esrl.noaa.gov/psd/th',
+#             'redds/dodsC/Datasets/ncep.reanalysis/surface/pres.sfc.',
+#             years[i], '.nc'), variables='pres')
+#         noaa_job = geoknife(stencil=station, fabric=fabric, wait=TRUE)
+#         noaa_data = result(noaa_job, with.units=TRUE)
+#
+#         pres = rbind(pres, noaa_data[,c('DateTime','1')])
+#
+#         cat('Year', i, 'complete.\n')
+#     }
+#
+#     pres = data.frame(pres)
+#
+#     df_out = pres %>% mutate(AirPres_kPa = X1 / 1000,
+#             DateTime_UTC=DateTime) %>% select(AirPres_kPa, DateTime_UTC)
+#
+#     return(df_out)
+# }
 
 estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
     sh=NULL, dd=NULL, fit, plot){
@@ -592,7 +616,6 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         dd = left_join(alldates, dd, by='DateTime_UTC')
     }
 
-
     #acquire air pressure data if necessary
     missing_DOsat = all(! c('satDO_mgL','DOsat_pct') %in% vd)
     # missing_waterTemp = ! 'WaterTemp_C' %in% vd
@@ -602,7 +625,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
 
     if(need_airPres_for_DOsat | need_airPres_for_Q){
 
-        airpres = try(retrieve_air_pressure(d$sites, dd), silent=TRUE)
+        airpres = try(retrieve_air_pressure(md, dd), silent=TRUE)
         if(class(airpres)=='try-error') {
             warning(paste('Failed to retrieve air pressure data.'), call.=FALSE)
         } else {
@@ -870,4 +893,68 @@ predict_metabolism = function(model_fit){
     }
 }
 
+FindandCollect_airpres <- function(lat, long, start_datetime, end_datetime) {
+    require(geosphere)
+    require(readr)
+    require(tibble)
+    require(zoo)
+    require(dplyr)
+    tf = tempfile()
+    download.file("ftp://ftp.ncdc.noaa.gov/pub/data/noaa/isd-history.txt",tf,mode="wb")
+    noaa.sites <- read.fwf(tf, skip = 22, header = F, widths = c(7,6,30, 5, 3, 6, 8, 9, 8, 9, 8), comment.char = "", col.names = c("USAF", "WBAN", "STATION NAME", "CTRY", "ST", "CALL", "LAT", "LON", "ELEV(M)", "BEGIN", "END"), flush = TRUE)
+    noaa.sites <- na.omit(noaa.sites)
+    noaa.sites <- noaa.sites %>%
+        mutate(LAT = as.numeric(as.character(LAT))) %>%
+        mutate(LON = as.numeric(as.character(LON))) %>%
+        filter(LAT < (lat + 5) & LAT > (lat - 5) & LON < (long + 5) & LON > (long - 5))
+    pt1 <- cbind(rep(long, length.out = length(noaa.sites$LAT)), rep(lat, length.out = length(noaa.sites$LAT)))
+    pt2 <- cbind(noaa.sites$LON, noaa.sites$LAT)
+    dist <- diag(distm(pt1, pt2, fun = distHaversine))/1000
+    noaa.sites$dist <- dist
+    tmp <- which((as.numeric(substr(noaa.sites$END,1,4)) >= as.numeric(substr(end_datetime, 1, 4))) & as.numeric(substr(noaa.sites$BEGIN,1,4)) <= as.numeric(substr(start_datetime, 1, 4)))
+    noaa.sites <- noaa.sites[tmp,]
+    noaa.sites <- noaa.sites[with(noaa.sites, order(dist)),]
 
+    yrs <- seq(as.numeric(substr(start_datetime, 1, 4)),as.numeric(substr(end_datetime, 1, 4)), by = 1)
+    for (i in 1:length(noaa.sites$dist)) {
+        k <- i
+        available <- vector(mode = 'logical', length = length(yrs))
+        USAF <- as.character(noaa.sites$USAF[i])
+        if(nchar(as.character(noaa.sites$WBAN[i])) == 5){
+            WBAN <- as.character(noaa.sites$WBAN[i])
+        } else {
+            WBAN <- paste0(0,as.character(noaa.sites$WBAN[i]))
+        }
+        y <- as.data.frame(matrix(NA, nrow = 1, ncol = 12))
+        for(j in 1:length(yrs)){
+            tf = tempfile()
+            download.file(paste0("ftp://ftp.ncdc.noaa.gov/pub/data/noaa/isd-lite/",yrs[j],"/",USAF,"-",WBAN,"-",yrs[j],".gz"),tf,mode="wb")
+            x = read.table(tf)
+            x[x==-9999] = NA
+            if(length(which(!is.na(x$V7))) >= 0.9 * length(x$V7)) {
+                available[j] <- TRUE
+                y <- rbind(x,y)
+            }else {
+                break
+            }
+        }
+        if(length(yrs) == length(which(available))){
+            break
+        }
+    }
+    y <- y[!is.na(y$V1),]
+    colnames(y) = c("y","m","d","h","air_temp","dewtemp","air_kPa","winddir","sindspeed","skycover","precip1h","precip6h")
+    y$air_kPa = y$air_kPa/100
+    y$air_temp = y$air_temp/10
+    y$DateTime_UTC = parse_datetime(paste0(y$y,"-",sprintf("%02d",y$m),"-",sprintf("%02d",y$d)," ",sprintf("%02d",y$h),":00:00 0"), "%F %T %Z")
+    y <- y[with(y, order(DateTime_UTC)),]
+    y = as_tibble(y) %>% select(DateTime_UTC,air_temp,air_kPa)
+    ss = tibble(DateTime_UTC=seq(y$DateTime_UTC[1], y$DateTime_UTC[nrow(y)], by=900))
+    xx = left_join(ss, y, by = "DateTime_UTC")
+    xx = mutate(xx, air_temp=na.approx(air_temp), air_kPa=na.approx(air_kPa))
+    daterng = c(start_datetime, end_datetime)
+    xtmp = xx %>% filter(DateTime_UTC>=daterng[1] & DateTime_UTC<=daterng[2])
+    select(xtmp, DateTime_UTC, air_kPa, air_temp)
+    print(noaa.sites[k,])
+    return(select(xtmp, DateTime_UTC, air_kPa, air_temp))
+}

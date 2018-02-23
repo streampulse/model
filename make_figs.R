@@ -126,8 +126,15 @@ site = strsplit(site_code, '_')[[1]][2]
 Z = zq[zq$site == site, 'level_m']
 Q = zq[zq$site == site, 'discharge_cms']
 # dim(streampulse_data$data)
-source('~/git/streampulse/model/sp_functions.R')
+# source('~/git/streampulse/model/sp_functions.R')
 # source('~/git/streampulse/model/gapfill_functions.R')
+
+lat = streampulse_data$sites$lat
+long = streampulse_data$sites$lon
+x = FindandCollect_airpres(lat, long, start_date, end_date)
+head(x)
+
+source('~/git/streampulse/model/sp_functions.R')
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     model=model_name, interval='15 min',
     # model=model_name, interval=interval,
@@ -135,7 +142,9 @@ fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     # zq_curve=list(sensor_height=NULL, fit='power',
     # zq_curve=list(sensor_height=NULL, a=.316, b=9.529, fit='power',
         # plot=TRUE),
-    zq_curve=list(sensor_height=NULL, Z=Z, Q=Q, a=NULL, b=NULL,
+    zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=1.7257, b=3.0586,
+    # zq_curve=list(sensor_height=NULL, Z=Z, Q=Q, a=NULL, b=NULL,
+        # fit='linear', plot=TRUE),
         fit='power', plot=TRUE),
     estimate_areal_depth=TRUE)
 
