@@ -196,7 +196,6 @@ saveRDS(modelfit, paste('~/Desktop/untracked/sm_out/fit',
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
     # model_type, model_name, substr(interval,1,2), fillgaps, sep='_'))
 # modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_SC_2017-02-08_2017-03-28_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
-# modelfit = readRDS(paste0('~/Desktop/untracked/sm_out/fit_AZ_LV_2017-08-07_2017-12-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
 
 #check daiy k-er correlation
 par(mfrow=c(1,1))
@@ -212,6 +211,11 @@ predictions = predict_metabolism(modelfit)
 saveRDS(predictions, paste('~/Desktop/untracked/sm_out/predictions',
     site_code, start_date, end_date,
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
+
+predictions = readRDS(paste0('~/Desktop/untracked/streampulse_model_runs_',
+    'round1/mod_objects/predictions_',
+    site_code, '_', start_date, '_', end_date, '_bayes_binned_obsproc_trapezoid',
+    '_DO-mod_stan.rds'))
 
 #plot ####
 # ymin = min(c(predictions$ER,predictions$GPP), na.rm=TRUE)
@@ -268,7 +272,75 @@ p = processing_func(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
 #     site_code, start_date, end_date, sep='_'), compress=FALSE)
 # kernel_func(p, 'GPP', 'ER')
 # dev.off()
-
+# ts_full=p; gpp_var='GPP'; er_var='ER'
+season_ts_func = function (ts_full, gpp_var, er_var){
+    avg_trajectory <- aggregate(ts_full, by = list(ts_full[,
+        "DOY"]), FUN = mean, na.rm = TRUE)
+    sd_trajectory <- aggregate(ts_full, by = list(ts_full[,
+        "DOY"]), FUN = sd, na.rm = TRUE)
+    llim <- min(c(avg_trajectory[, er_var],
+        avg_trajectory[, gpp_var]), na.rm = T)
+    ulim <- max(c(avg_trajectory[, er_var],
+        avg_trajectory[, gpp_var]), na.rm = T)
+    # plot(avg_trajectory[, gpp_var],
+    plot(avg_trajectory$DOY, avg_trajectory[, gpp_var],
+        type = "l", col = "red", xlab = '', ylab = expression(paste("gO"[2] *
+                " m"^"-2" * " d"^"-1")), ylim = c(llim, ulim), lwd = 2,
+        xaxt='n', xlim=c(1, 366))
+    month_labs = month.abb
+    month_labs[seq(2, 12, 2)] = ''
+    axis(1, seq(1, 365, length.out=12), month_labs)
+    # t = avg_trajectory$Date
+    # yearstarts = match(unique(substr(t,1,4)), substr(t,1,4))
+    # monthstarts = match(unique(substr(t,1,7)), substr(t,1,7))
+    # axis(1, yearstarts, rep('', length(yearstarts)), lwd.ticks=2, tck=-0.05)
+    # axis(1, yearstarts, substr(t[yearstarts],1,4), line=1, tick=FALSE)
+    # month_abbs = month.abb[as.numeric(substr(t[monthstarts],6,7))]
+    # axis(1, monthstarts[-1], month_abbs[-1])
+    lines(avg_trajectory[, "DOY"], avg_trajectory[, er_var],
+    # lines(avg_trajectory[, er_var],
+        col = "steelblue", lwd = 2)
+    lines(avg_trajectory[, "DOY"], avg_trajectory[, "NPP"],
+    # lines(avg_trajectory$NPP,
+        col = "grey60", lwd = 2)
+    abline(h = 0)
+    legend("topleft", inset = c(0.1, -0.15), ncol = 3, xpd = TRUE,
+        c("GPP", "NEP", "ER"), bty = "n", lty = c(1, 1, 1),
+        lwd = 2, col = c("red", "grey60", "steelblue"))
+}
+# season_ts_func(p, 'GPP', 'ER')
+cumulative_func = function (ts_full, gpp_var, er_var){
+    na_rm <- na.omit(ts_full[, c("Year", "DOY", gpp_var, er_var,
+        "NPP")])
+    na_rm$csum_gpp <- ave(na_rm[, gpp_var], na_rm[, "Year"],
+        FUN = cumsum)
+    na_rm$csum_er <- ave(na_rm[, er_var], na_rm[, "Year"], FUN = cumsum)
+    na_rm$csum_npp <- ave(na_rm[, "NPP"], na_rm[, "Year"], FUN = cumsum)
+    lim <- max(abs(na_rm[, c("csum_gpp", "csum_er")]))
+    pal <- rev(brewer.pal(7, "Spectral"))
+    cols <- setNames(data.frame(unique(na_rm[, "Year"]), pal[1:length(unique(na_rm[,
+        "Year"]))]), c("Year", "color"))
+    csum_merge <- merge(na_rm, cols, by = "Year", type = "left")
+    plot(csum_merge$DOY, csum_merge[, "csum_gpp"], pch = 20,
+        cex = 1.5, col = paste(csum_merge[, "color"]), ylim = c(0,
+            lim), xaxt = "n", xlim=c(0, 366),  ylab = "Cumulative GPP",
+        type='p')
+    legend("topleft", paste(c(cols[, "Year"])), lwd = c(1, 1),
+        col = paste(cols[, "color"]), cex = 0.9)
+    plot(csum_merge$DOY, csum_merge[, "csum_er"], pch = 20,
+        cex = 1.5, col = paste(csum_merge[, "color"]), ylim = c(-lim,
+            0), xaxt = "n", xlim=c(0, 366), ylab = "Cumulative ER",
+        type='p')
+    plot(csum_merge$DOY, csum_merge[, "csum_npp"], pch = 20,
+        cex = 1.5, col = paste(csum_merge[, "color"]), ylim = c(-lim,
+            lim), ylab = "Cumulative NPP", xlim=c(0, 366),
+        xlab = '', type='p', xaxt='n')
+    month_labs = month.abb
+    month_labs[seq(2, 12, 2)] = ''
+    axis(1, seq(1, 365, length.out=12), month_labs)
+    abline(h = 0, col = "grey60", lty = 2)
+}
+# cumulative_func(p, gpp_var, er_var)
 diag_plots = function (ts, date_var, gpp_var, er_var){
     ts_full <- processing_func(ts, date_var, gpp_var, er_var)
     layout(matrix(c(1, 1, 3, 1, 1, 4, 2, 2, 5), 3, 3, byrow = TRUE),
@@ -283,12 +355,39 @@ diag_plots = function (ts, date_var, gpp_var, er_var){
     par(mar = c(0, 4, 0, 0.1))
     cumulative_func(ts_full, gpp_var, er_var)
 }
-pdf(width=7, height=7,
-    file=paste0('~/Desktop/untracked/sm_figs/output2_',
-    site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
+
+# pdf(width=7, height=7,
+#     file=paste0('~/Desktop/untracked/sm_figs/output2_',
+#     site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
 diag_plots(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
-dev.off()
+# dev.off()
 
 # average_plot(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
 # cumulative_plots(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
 # kernel_plot(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
+
+#replot all ####
+fdir = '~/Desktop/untracked/streampulse_model_runs_round1/mod_objects/'
+f = list.files(fdir)
+for(i in f){
+    fullpath = paste0(fdir, i)
+    predictions = readRDS(fullpath)
+    # p = processing_func(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
+
+    yrs = substr(predictions$date,1,4)
+    years_represented = unique(yrs)
+    if(length(years_represented > 1)){
+        mode_year = names(which.max(table(yrs)))
+        predictions = predictions[substr(predictions$date, 1, 4) == mode_year,]
+    }
+
+    splt = strsplit(i, '_')[[1]]
+    site_code = paste0(splt[2:3], collapse='_')
+    start_date = splt[4]
+    end_date = splt[5]
+    pdf(width=6, height=5.5,
+        file=paste0('~/Desktop/untracked/figs_redo/output2_',
+        site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
+    diag_plots(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
+    dev.off()
+}
