@@ -44,7 +44,7 @@ site_code = "SE_AbiskoM2"; start_date = "2016-06-14"; end_date = '2016-09-22'
 site_code = "SE_AbiskoM6"; start_date = "2016-06-10"; end_date = '2016-10-23'
 site_code = "SE_AbiskoM9"; start_date = "2016-06-15"; end_date = '2016-09-08'
 site_code = "SE_AbiskoM10"; start_date = "2016-06-15"; end_date = '2016-08-16'
-##site_code = "SE_AbiskoM16"; start_date = "2016-05-27"; end_date = '2016-10-30'
+site_code = "SE_AbiskoM16"; start_date = "2016-05-27"; end_date = '2016-10-30'
 site_code = "SE_AbiskoM17"; start_date = "2016-06-15"; end_date = '2016-09-08'
 site_code = "SE_M18"; start_date = "2016-06-08"; end_date = '2016-10-22'
 site_code = "SE_M6"; start_date = "2016-06-08"; end_date = '2016-10-22'
@@ -70,12 +70,12 @@ site_code = "SE_M6"; start_date = "2016-06-08"; end_date = '2016-10-22'
 #site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03" #sd 11-13
 #site_code = "AZ_SC"; start_date = "2017-02-08"; end_date = "2017-03-28"
 # site_code = "AZ_WB"; start_date = "2017-08-04"; end_date = "2017-12-27"
-# site_code = "NC_Eno"; start_date = "2016-07-11"; end_date = "2017-08-30"
-site_code = "NC_UEno"; start_date = "2017-01-01"; end_date = "2017-12-31" #2016-07-12; 2018-02-09
-site_code = "NC_Stony"; start_date = "2016-12-01"; end_date = "2017-06-01" #2016-06-30; 2017-08-09
-##site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
-##site_code = "NC_UNHC"; start_date = "2016-07-12"; end_date = "2017-08-30"
-##site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
+site_code = "NC_Eno"; start_date = "2017-01-01"; end_date = "2017-10-20"#2016-07-11
+# site_code = "NC_UEno"; start_date = "2017-01-01"; end_date = "2017-12-31" #2016-07-12; 2018-02-09
+# site_code = "NC_Stony"; start_date = "2016-12-01"; end_date = "2017-06-01" #2016-06-30; 2017-08-09
+# site_code = "NC_NHC"; start_date = "2017-01-01"; end_date = "2018-01-01" #2016-09-14; 2018-01-25
+# site_code = "NC_UNHC"; start_date = "2017-01-01"; end_date = "2017-12-11" #2016-07-12
+# site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
 # site_code = 'WI_BEC'; start_date = '2017-01-26'; end_date = '2018-01-25' #2009-10-02; 2018-01-25
 # site_code = 'WI_BRW'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
 
@@ -85,8 +85,8 @@ site_code = "NC_Stony"; start_date = "2016-12-01"; end_date = "2017-06-01" #2016
 
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
-    flags=TRUE)
-    # flags=TRUE, token='67f2d1a026b6c9e3446e') #gerard
+    # flags=TRUE)
+    flags=TRUE, token='67f2d1a026b6c9e3446e') #gerard
     # flags=TRUE, token='7e4cd63a38de5d4a4715') #maria
 head(streampulse_data$data)
 unique(streampulse_data$data$variable)
@@ -138,8 +138,9 @@ fitdata = prep_metabolism(d=streampulse_data, type=model_type,
     # zq_curve=list(sensor_height=NULL, fit='power',
     # zq_curve=list(sensor_height=NULL, a=.316, b=9.529, fit='power',
         # plot=TRUE),
-    zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=1.7257, b=3.0586,
-    # zq_curve=list(sensor_height=NULL, Z=Z, Q=Q, a=NULL, b=NULL,
+    # zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=2.5662, b=2.7534, #nhc
+    # zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=1.7257, b=3.0586, #ueno
+    zq_curve=list(sensor_height=NULL, Z=Z, Q=Q, a=NULL, b=NULL,
         # fit='linear', plot=TRUE),
         fit='power', plot=TRUE),
     estimate_areal_depth=TRUE)
@@ -173,7 +174,7 @@ for(i in plotvars){
 }
 dev.off()
 
-source('~/git/streampulse/model/sp_functions.R')
+# source('~/git/streampulse/model/sp_functions.R')
 modelfit = fit_metabolism(fitdata)
 
 max(modelfit@fit$daily$K600_daily_mean, na.rm=TRUE) #shoudnt be over 90

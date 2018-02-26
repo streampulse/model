@@ -227,6 +227,9 @@ retrieve_air_pressure = function(md, dd){
 estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
     sh=NULL, dd=NULL, fit, plot){
 
+    # dd2 <<- dd
+    # stop('a')
+    # dd = dd2
     # if(is.numeric(sh)){ #then need to calculate depth. based on:
         #https://web.archive.org/web/20170617070623/http://www.onsetcomp.com/files/support/tech-notes/onsetBCAguide.pdf
 
@@ -334,13 +337,23 @@ estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
 
         #try to fit power model
         if(fit == 'power'){
-            mod = tryCatch(nls(Q ~ (a * Z^b), start=list(a=0.1, b=1)),
-                error=function(e){
+            # mod = tryCatch(nls(Q ~ (a * Z^b), start=list(a=0.1, b=1)),
+            #     error=function(e){
+            #         stop(paste0('Failed to fit rating curve.\n\tThis is worth ',
+            #             'mentioning to Mike: vlahm13@gmail.com.\n\t',
+            #             'Note that you can fit your own curve and then supply\n\t',
+            #             'a and b (of Q=aZ^b) directly.'), call.=FALSE)
+            #     })
+            mod = try(nls(Q ~ (a * Z^b), start=list(a=0.1, b=1)), silent=TRUE)
+            if(class(mod) == 'try-error'){
+                mod = try(nls(Q ~ (a * Z^b), start=list(a=1, b=1)), silent=TRUE)
+                if(class(mod) == 'try-error'){
                     stop(paste0('Failed to fit rating curve.\n\tThis is worth ',
                         'mentioning to Mike: vlahm13@gmail.com.\n\t',
-                        'Note that you can fit your own curve and then supply\n\t',
-                        'a and b (of Q=aZ^b) directly.'), call.=FALSE)
-                })
+                        'Note that you can fit your own curve and then supply',
+                        '\n\ta and b (of Q=aZ^b) directly.'), call.=FALSE)
+                }
+            }
         } else { #try to fit exponential
             if(fit == 'exponential'){
                 mod = tryCatch(nls(Q ~ (a * exp(b * Z)),
@@ -672,7 +685,7 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
     if(need_airPres_for_DOsat | need_airPres_for_Q){
 
         airpres = try(retrieve_air_pressure(md, dd), silent=TRUE)
-        if(class(airpres)=='try-error') {
+        if(class(airpres) == 'try-error') {
             warning(paste('Failed to retrieve air pressure data.'), call.=FALSE)
         } else {
             dd = left_join(dd, airpres, by='DateTime_UTC')
