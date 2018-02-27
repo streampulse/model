@@ -187,43 +187,6 @@ retrieve_air_pressure = function(md, dd){
     return(df_out)
 }
 
-# retrieve_air_pressure_old = function(sites, dd){
-#
-#     # sites2 <<- sites
-#     # dd2 <<- dd
-#
-#     #format site data for use with geoknife package
-#     station = as.data.frame(t(sites[,c('lon','lat')]))
-#     station = simplegeom(station)
-#
-#     years = unique(substr(dd$DateTime_UTC, 1, 4))
-#     cat('Missing DO saturation, so acquiring air pressure',
-#         'data for', length(years),
-#         'year(s). Each year may take a few minutes.\n')
-#
-#     #retrieve air pressure data from noaa
-#     pres = data.frame(datetime=.POSIXct(character()), pres=numeric())
-#     for(i in 1:length(years)){
-#
-#         fabric = webdata(url=paste0('https://www.esrl.noaa.gov/psd/th',
-#             'redds/dodsC/Datasets/ncep.reanalysis/surface/pres.sfc.',
-#             years[i], '.nc'), variables='pres')
-#         noaa_job = geoknife(stencil=station, fabric=fabric, wait=TRUE)
-#         noaa_data = result(noaa_job, with.units=TRUE)
-#
-#         pres = rbind(pres, noaa_data[,c('DateTime','1')])
-#
-#         cat('Year', i, 'complete.\n')
-#     }
-#
-#     pres = data.frame(pres)
-#
-#     df_out = pres %>% mutate(AirPres_kPa = X1 / 1000,
-#             DateTime_UTC=DateTime) %>% select(AirPres_kPa, DateTime_UTC)
-#
-#     return(df_out)
-# }
-
 estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
     sh=NULL, dd=NULL, fit, plot){
 
@@ -358,9 +321,11 @@ estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
         }
 
         if(plot == TRUE){
-            plot(Z, Q, xlab='Z sample data (m)', ylab='Q samp. data (cms)',
+            plot(Z, Q, xlab='', ylab='Q samp. data (cms)',
                 las=1, main=paste0('Rating curve fit (', fit, ')'))
-            lines(Z, predict(mod, list(x=Z)))
+            mtext('Z sample data (m)', 1, 2)
+            plotseq = round(seq(Z[1], Z[length(Z)], diff(range(Z))/50), 2)
+            lines(plotseq, predict(mod, list(Z=plotseq)))
         }
 
         params = summary(mod)$parameters
@@ -396,8 +361,10 @@ estimate_discharge = function(Z=NULL, Q=NULL, a=NULL, b=NULL,
     }
 
     if(plot){
-        plot(depth, discharge, xlab=paste(dep_or_lvl, 'series data (m)'),
+        plot(depth, discharge, xlab='',
+            xlim=c(max(min(depth, na.rm=TRUE), 0), max(depth, na.rm=TRUE)),
             ylab='Est. Q (cms)', main='Rating curve prediction', las=1)
+        mtext(paste(dep_or_lvl, 'series data (m)'), 1, 2)
     }
     suppressWarnings(par(defpar))
 
@@ -433,7 +400,10 @@ prep_metabolism = function(d, model="streamMetabolizer", type="bayes",
         # units are m/s and pascals, respectively
 
     # checks
-    if(model=="BASE") type="bayes" #can't use mle mode with BASE
+    if(model=="BASE"){
+        stop('BASE not yet supported', call.=FALSE) ####
+        type="bayes" #can't use mle mode with BASE
+    }
     if(!grepl('\\d+ (min|hour)', interval, perl=TRUE)){ #correct interval format
         stop(paste('Interval must be of the form "length [space] unit"\n\twhere',
             'length is numeric and unit is either "min" or "hour".'), call.=FALSE)
