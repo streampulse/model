@@ -48,8 +48,8 @@ site_code = "SE_AbiskoM16"; start_date = "2016-05-27"; end_date = '2016-10-30'
 site_code = "SE_AbiskoM17"; start_date = "2016-06-15"; end_date = '2016-09-08'
 site_code = "SE_M18"; start_date = "2016-06-08"; end_date = '2016-10-22'
 site_code = "SE_M6"; start_date = "2016-06-08"; end_date = '2016-10-22'
-##site_code = "PR_QS"; start_date = "2014-03-10"; end_date = '2015-03-10'#ed "2017-12-20"
-#site_code = "RI_CorkBrk"; start_date = "2015-06-23"; end_date = '2016-06-22'#ed "2017-01-03", sd=2014-06-23
+site_code = "PR_QS"; start_date = "2015-01-01"; end_date = '2015-12-31'#ed "2017-12-20"
+site_code = "RI_CorkBrk"; start_date = "2016-01-01"; end_date = '2016-12-31'#ed "2017-01-03", sd=2014-06-23
 #site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
 #site_code = "CT_HUBB"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
 #site_code = "CT_FARM"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
@@ -64,7 +64,7 @@ site_code = "SE_M6"; start_date = "2016-06-08"; end_date = '2016-10-22'
 #site_code = "MD_GFGB"; start_date = "2016-02-19"; end_date = '2016-11-11'
 #site_code = "MD_DRKR"; start_date = "2016-02-18"; end_date = '2016-11-19'
 # site_code = "MD_POBR"; start_date = "2016-02-19"; end_date = '2016-11-19'
-#site_code = "MD_BARN"; start_date = "2016-02-19"; end_date = '2016-11-19'
+site_code = "MD_BARN"; start_date = "2016-02-19"; end_date = '2016-11-19'
 #site_code = "VT_SLPR"; start_date = "2015-06-03"; end_date = '2016-06-03' #ed 2016-11-11
 # site_code = "AZ_LV"; start_date = "2017-08-07"; end_date = "2017-12-25" #sd 2017-07-07 but no o2
 #site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03" #sd 11-13
@@ -78,6 +78,8 @@ site_code = "NC_Eno"; start_date = "2017-01-01"; end_date = "2017-10-20"#2016-07
 # site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
 # site_code = 'WI_BEC'; start_date = '2017-01-26'; end_date = '2018-01-25' #2009-10-02; 2018-01-25
 # site_code = 'WI_BRW'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
+site_code = 'FL'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
+
 
 #run ####
 # source('~/git/streampulse/model/sp_functions.R')
@@ -85,8 +87,8 @@ site_code = "NC_Eno"; start_date = "2017-01-01"; end_date = "2017-10-20"#2016-07
 
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
-    # flags=TRUE)
-    flags=TRUE, token='67f2d1a026b6c9e3446e') #gerard
+    flags=TRUE)
+    # flags=TRUE, token='67f2d1a026b6c9e3446e') #gerard
     # flags=TRUE, token='7e4cd63a38de5d4a4715') #maria
 head(streampulse_data$data)
 unique(streampulse_data$data$variable)
@@ -130,9 +132,9 @@ Q = zq[zq$site == site, 'discharge_cms']
 # source('~/git/streampulse/model/sp_functions.R')
 # source('~/git/streampulse/model/gapfill_functions.R')
 
-source('~/git/streampulse/model/sp_functions.R')
-fitdata = prep_metabolism(d=streampulse_data, type=model_type,
-    model=model_name, interval='15 min',
+# source('~/git/streampulse/model/sp_functions.R')
+fitdata = prep_metabolism(d=streampulse_data, type='mle',
+    model=model_name, interval='30 min',
     # model=model_name, interval=interval,
     rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps,
     # zq_curve=list(sensor_height=NULL, fit='power',
@@ -140,9 +142,9 @@ fitdata = prep_metabolism(d=streampulse_data, type=model_type,
         # plot=TRUE),
     # zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=2.5662, b=2.7534, #nhc
     # zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=1.7257, b=3.0586, #ueno
-    zq_curve=list(sensor_height=NULL, Z=Z, Q=Q, a=NULL, b=NULL,
+    # zq_curve=list(sensor_height=NULL, Z=Z, Q=Q, a=NULL, b=NULL,
         # fit='linear', plot=TRUE),
-        fit='power', plot=TRUE),
+        # fit='power', plot=TRUE),
     estimate_areal_depth=TRUE)
 
 # apply(fitdata[,-1], 2, function(x) sum(is.infinite(x)))
@@ -213,10 +215,10 @@ saveRDS(predictions, paste('~/Desktop/untracked/sm_out/predictions',
     site_code, start_date, end_date,
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
 
-predictions = readRDS(paste0('~/Desktop/untracked/streampulse_model_runs_',
-    'round1/mod_objects/predictions_',
-    site_code, '_', start_date, '_', end_date, '_bayes_binned_obsproc_trapezoid',
-    '_DO-mod_stan.rds'))
+# predictions = readRDS(paste0('~/Desktop/untracked/streampulse_model_runs_',
+#     'round1/mod_objects/predictions_',
+#     site_code, '_', start_date, '_', end_date, '_bayes_binned_obsproc_trapezoid',
+#     '_DO-mod_stan.rds'))
 
 #plot ####
 # ymin = min(c(predictions$ER,predictions$GPP), na.rm=TRUE)
@@ -357,19 +359,21 @@ diag_plots = function (ts, date_var, gpp_var, er_var){
     cumulative_func(ts_full, gpp_var, er_var)
 }
 
-# pdf(width=7, height=7,
-#     file=paste0('~/Desktop/untracked/sm_figs/output2_',
-#     site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
+pdf(width=7, height=7,
+    file=paste0('~/Desktop/untracked/sm_figs/output2_',
+    site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
 diag_plots(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
-# dev.off()
+dev.off()
 
 # average_plot(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
 # cumulative_plots(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
 # kernel_plot(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
 
 #replot all ####
-fdir = '~/Desktop/untracked/streampulse_model_runs_round1/mod_objects/'
-f = list.files(fdir)
+fdir = '~/Desktop/untracked/sm_out/'
+# fdir = '~/Desktop/untracked/streampulse_model_runs_round1/mod_objects/'
+f = list.files(fdir, 'predictions_SE.*')
+
 for(i in f){
     fullpath = paste0(fdir, i)
     predictions = readRDS(fullpath)
