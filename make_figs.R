@@ -70,12 +70,16 @@ site_code = "MD_BARN"; start_date = "2016-02-19"; end_date = '2016-11-19'
 #site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03" #sd 11-13
 #site_code = "AZ_SC"; start_date = "2017-02-08"; end_date = "2017-03-28"
 # site_code = "AZ_WB"; start_date = "2017-08-04"; end_date = "2017-12-27"
+site_code = "NC_Eno"; start_date = "2017-01-01"; end_date = "2017-08-30" #2016-07-11;
+# site_code = "NC_UEno"; start_date = "2017-01-01"; end_date = "2017-12-31" #2016-07-12; 2018-02-09
+# site_code = "NC_Stony"; start_date = "2016-12-01"; end_date = "2017-06-01" #2016-06-30; 2017-08-09
+# site_code = "NC_NHC"; start_date = "2016-09-14"; end_date = "2017-09-13"
+site_code = "NC_Mud"; start_date = "2017-01-01"; end_date = "2017-12-31" #2016-07-12; 2018-01-25
 site_code = "NC_Eno"; start_date = "2017-01-01"; end_date = "2017-10-20"#2016-07-11
 # site_code = "NC_UEno"; start_date = "2017-01-01"; end_date = "2017-12-31" #2016-07-12; 2018-02-09
 # site_code = "NC_Stony"; start_date = "2016-12-01"; end_date = "2017-06-01" #2016-06-30; 2017-08-09
 # site_code = "NC_NHC"; start_date = "2017-01-01"; end_date = "2018-01-01" #2016-09-14; 2018-01-25
 # site_code = "NC_UNHC"; start_date = "2017-01-01"; end_date = "2017-12-11" #2016-07-12
-# site_code = "NC_Mud"; start_date = "2016-07-12"; end_date = "2017-08-30"
 # site_code = 'WI_BEC'; start_date = '2017-01-26'; end_date = '2018-01-25' #2009-10-02; 2018-01-25
 # site_code = 'WI_BRW'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
 site_code = 'FL'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
@@ -133,9 +137,8 @@ Q = zq[zq$site == site, 'discharge_cms']
 # source('~/git/streampulse/model/gapfill_functions.R')
 
 # source('~/git/streampulse/model/sp_functions.R')
-fitdata = prep_metabolism(d=streampulse_data, type='mle',
-    model=model_name, interval='30 min',
-    # model=model_name, interval=interval,
+fitdata = prep_metabolism(d=streampulse_data, type='bayes',
+    model='streamMetabolizer', interval='15 min',
     rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps,
     # zq_curve=list(sensor_height=NULL, fit='power',
     # zq_curve=list(sensor_height=NULL, a=.316, b=9.529, fit='power',
@@ -370,29 +373,27 @@ dev.off()
 # kernel_plot(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
 
 #replot all ####
-fdir = '~/Desktop/untracked/sm_out/'
 # fdir = '~/Desktop/untracked/streampulse_model_runs_round1/mod_objects/'
-f = list.files(fdir, 'predictions_SE.*')
-
-for(i in f){
-    fullpath = paste0(fdir, i)
-    predictions = readRDS(fullpath)
-    # p = processing_func(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
-
-    yrs = substr(predictions$date,1,4)
-    years_represented = unique(yrs)
-    if(length(years_represented > 1)){
-        mode_year = names(which.max(table(yrs)))
-        predictions = predictions[substr(predictions$date, 1, 4) == mode_year,]
-    }
-
-    splt = strsplit(i, '_')[[1]]
-    site_code = paste0(splt[2:3], collapse='_')
-    start_date = splt[4]
-    end_date = splt[5]
-    pdf(width=6, height=5.5,
-        file=paste0('~/Desktop/untracked/figs_redo/output2_',
-        site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
-    diag_plots(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
-    dev.off()
-}
+# f = list.files(fdir)
+# for(i in f){
+#     fullpath = paste0(fdir, i)
+#     predictions = readRDS(fullpath)
+#     # p = processing_func(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
+#
+#     yrs = substr(predictions$date,1,4)
+#     years_represented = unique(yrs)
+#     if(length(years_represented > 1)){
+#         mode_year = names(which.max(table(yrs)))
+#         predictions = predictions[substr(predictions$date, 1, 4) == mode_year,]
+#     }
+#
+#     splt = strsplit(i, '_')[[1]]
+#     site_code = paste0(splt[2:3], collapse='_')
+#     start_date = splt[4]
+#     end_date = splt[5]
+#     pdf(width=6, height=5.5,
+#         file=paste0('~/Desktop/untracked/figs_redo/output2_',
+#         site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
+#     diag_plots(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
+#     dev.off()
+# }
