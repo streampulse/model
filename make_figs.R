@@ -10,64 +10,60 @@ library(StreamPULSE)
 library(streamMetabolizer)
 library(ks)
 library(RColorBrewer)
-ts = predictions
-ts_full = processing_func(predictions)
 processing_func = function (ts) {
     gpp = ts$GPP; gppup = ts$GPP.upper; gpplo = ts$GPP.lower
     er = ts$ER; erup = ts$ER.upper; erlo = ts$ER.lower
-    ts[!is.na(gpp) & gpp < 0 | !is.na(gpp) & gpp > 100, 'GPP'] <- NA
-    ts[!is.na(er) & er > 0, 'ER'] <- NA
+    ts[!is.na(gpp) & gpp < 0 | !is.na(gpp) & gpp > 100, 'GPP'] = NA
+    ts[!is.na(er) & er > 0, 'ER'] = NA
     # if('tbl' %in% class(ts$date)){
-    full_dates = as.data.frame(ts$date)
-    colnames(full_dates) = 'Date'
-    colnames(ts)[which(colnames(ts) == 'date')] = 'Date'
+
+    # full_dates = as.data.frame(ts$date)
+    # colnames(full_dates) = 'Date'
+
+    # colnames(ts)[which(colnames(ts) == 'date')] = 'Date'
+    ts_full = as.data.frame(ts)
     # } else {
     #     ts_date = ts$date
-    #     ts$Date <- format(ts_date, "%Y-%m-%d")
-    #     full_dates <- setNames(data.frame(
+    #     ts$Date = format(ts_date, "%Y-%m-%d")
+    #     full_dates = setNames(data.frame(
     #         seq(from = as.Date(paste(min(format(ts$date, "%Y")),
     #             "-01-01", sep = "")),
     #             to = as.Date(paste(max(format(ts[,
     #                 date_var], "%Y")), "-12-31", sep = "")), by = 1)), "Date")
     # }
-    ts_full <- merge(full_dates, ts, by = c("Date"), all = TRUE)
-    ts_full$Year <- as.numeric(format(ts_full$Date, "%Y"))
-    ts_full$DOY <- as.numeric(format(ts_full$Date, "%j"))
-    ts_full$NPP <- ts_full$GPP + ts_full$ER
+
+    # ts_full = merge(full_dates, ts, by = c("Date"), all = TRUE)
+    ts_full$Year = as.numeric(format(ts_full$date, "%Y"))
+    ts_full$DOY = as.numeric(format(ts_full$date, "%j"))
+    ts_full$NPP = ts_full$GPP + ts_full$ER
     return(ts_full)
 }
+season_ts_func = function (ts_full){
 
-season_ts_func = function (ts_full, gpp_var, er_var){
+    ts_full = ts_full[-c(1,nrow(ts_full)),-c(1,8,9,10,11)]
 
-    ts_full = ts_full[,-c(1,8,9,10,11,13)]
+    avg_trajectory = aggregate(ts_full, by=list(ts_full$DOY),
+        FUN=mean, na.rm=TRUE)
 
-    gpp = ts_full$GPP; gppup = ts_full$GPP.upper; gpplo = ts_full$GPP.lower
-    er = ts_full$ER; erup = ts_full$ER.upper; erlo = ts_full$ER.lower
+    gpp = avg_trajectory$GPP
+    gppup = avg_trajectory$GPP.upper; gpplo = avg_trajectory$GPP.lower
+    er = avg_trajectory$ER
+    erup = avg_trajectory$ER.upper; erlo = avg_trajectory$ER.lower
     doy = avg_trajectory$DOY
 
-    avg_trajectory <- aggregate(ts_full, by = list(ts_full[,
-        "DOY"]), FUN = mean, na.rm = TRUE)
-    sd_trajectory <- aggregate(ts_full, by = list(ts_full[,
-        "DOY"]), FUN = sd, na.rm = TRUE)
-    llim <- min(c(gpplo, erlo), na.rm=TRUE)
-    ulim <- max(c(gppup, erup), na.rm=TRUE)
+    sd_trajectory = aggregate(ts_full, by=list(ts_full$DOY),
+        FUN=sd, na.rm=TRUE)
+
+    llim = min(c(gpplo, erlo), na.rm=TRUE)
+    ulim = max(c(gppup, erup), na.rm=TRUE)
     # plot(avg_trajectory[, gpp_var],
-    plot(avg_trajectory$DOY, avg_trajectory[, gpp_var],
-        type = "l", col = "red", xlab = '', ylab = expression(paste("gO"[2] *
-                " m"^"-2" * " d"^"-1")), ylim = c(llim, ulim), lwd = 2,
+    plot(doy, avg_trajectory$GPP,
+        type="l", col="red", xlab='', ylab=expression(paste("gO"[2] *
+                " m"^"-2" * " d"^"-1")), ylim=c(llim, ulim), lwd=2,
         xaxt='n', xlim=c(1, 366))
-    doy = doy[-c(1, length(doy))]
-    gpplo = gpplo[-c(1, length(doy))]
-    gppup = gppup[-c(1, length(doy))]
-    erup = erup[-c(1, length(doy))]
-    erlo = erlo[-c(1, length(doy))]
-    polygon(c(doy, rev(doy)),
-        c(gpplo, rev(gppup)))
-    polygon(c(doy, rev(doy)),
-        c(erlo, rev(erup)))
-    month_labs = month.abb
-    month_labs[seq(2, 12, 2)] = ''
-    axis(1, seq(1, 365, length.out=12), month_labs)
+    polygon(x=c(doy, rev(doy)),
+        y=c(gpplo, rev(gppup)), col=adjustcolor('red',alpha.f=0.15),
+        border=NA)
     # t = avg_trajectory$Date
     # yearstarts = match(unique(substr(t,1,4)), substr(t,1,4))
     # monthstarts = match(unique(substr(t,1,7)), substr(t,1,7))
@@ -75,80 +71,83 @@ season_ts_func = function (ts_full, gpp_var, er_var){
     # axis(1, yearstarts, substr(t[yearstarts],1,4), line=1, tick=FALSE)
     # month_abbs = month.abb[as.numeric(substr(t[monthstarts],6,7))]
     # axis(1, monthstarts[-1], month_abbs[-1])
-    lines(avg_trajectory[, "DOY"], avg_trajectory[, er_var],
-        # lines(avg_trajectory[, er_var],
-        col = "steelblue", lwd = 2)
-    lines(avg_trajectory[, "DOY"], avg_trajectory[, "NPP"],
-        # lines(avg_trajectory$NPP,
-        col = "grey60", lwd = 2)
-    abline(h = 0)
-    legend("topleft", inset = c(0.1, -0.15), ncol = 3, xpd = TRUE,
-        c("GPP", "NEP", "ER"), bty = "n", lty = c(1, 1, 1),
-        lwd = 2, col = c("red", "grey60", "steelblue"))
-}
-cumulative_func = function (ts_full, gpp_var, er_var){
-    na_rm <- na.omit(ts_full[, c("Year", "DOY", gpp_var, er_var,
-        "NPP")])
-    na_rm$csum_gpp <- ave(na_rm[, gpp_var], na_rm[, "Year"],
-        FUN = cumsum)
-    na_rm$csum_er <- ave(na_rm[, er_var], na_rm[, "Year"], FUN = cumsum)
-    na_rm$csum_npp <- ave(na_rm[, "NPP"], na_rm[, "Year"], FUN = cumsum)
-    lim <- max(abs(na_rm[, c("csum_gpp", "csum_er")]))
-    pal <- rev(brewer.pal(7, "Spectral"))
-    cols <- setNames(data.frame(unique(na_rm[, "Year"]), pal[1:length(unique(na_rm[,
-        "Year"]))]), c("Year", "color"))
-    csum_merge <- merge(na_rm, cols, by = "Year", type = "left")
-    plot(csum_merge$DOY, csum_merge[, "csum_gpp"], pch = 20,
-        cex = 1.5, col = paste(csum_merge[, "color"]), ylim = c(0,
-            lim), xaxt = "n", xlim=c(0, 366),  ylab = "Cumulative GPP",
-        type='p')
-    legend("topleft", paste(c(cols[, "Year"])), lwd = c(1, 1),
-        col = paste(cols[, "color"]), cex = 0.9)
-    plot(csum_merge$DOY, csum_merge[, "csum_er"], pch = 20,
-        cex = 1.5, col = paste(csum_merge[, "color"]), ylim = c(-lim,
-            0), xaxt = "n", xlim=c(0, 366), ylab = "Cumulative ER",
-        type='p')
-    plot(csum_merge$DOY, csum_merge[, "csum_npp"], pch = 20,
-        cex = 1.5, col = paste(csum_merge[, "color"]), ylim = c(-lim,
-            lim), ylab = "Cumulative NPP", xlim=c(0, 366),
-        xlab = '', type='p', xaxt='n')
+    lines(doy, avg_trajectory$ER, col="steelblue", lwd=2)
+    polygon(x=c(doy, rev(doy)),
+        y=c(erlo, rev(erup)), col=adjustcolor('steelblue',alpha.f=0.15),
+        border=NA)
+    lines(avg_trajectory$DOY, avg_trajectory$NPP, col="darkorchid3", lwd=2)
+    abline(h=0)
+    legend("topleft", inset=c(0.1, -0.15), ncol=3, xpd=TRUE,
+        c("GPP", "NEP", "ER"), bty="n", lty=c(1, 1, 1),
+        lwd=2, col=c("red", "darkorchid3", "steelblue"))
     month_labs = month.abb
     month_labs[seq(2, 12, 2)] = ''
     axis(1, seq(1, 365, length.out=12), month_labs)
-    abline(h = 0, col = "grey60", lty = 2)
 }
-kernel_func = function (ts_full, gpp_var, er_var, main){
-    kernel <- kde(na.omit(ts_full[, c(gpp_var, er_var)]))
-    k_lims <- max(abs(c(min(ts_full[, er_var], na.rm = TRUE),
-        max(ts_full[, gpp_var], na.rm = TRUE))))
-    plot(kernel, xlab = expression(paste("GPP (gO"[2] * " m"^"-2" *
-            " d"^"-1" * ")")), ylab = expression(paste("ER (gO"[2] *
-                    " m"^"-2" * " d"^"-1" * ")")), ylim = c(-k_lims, 0),
-        xlim = c(0, k_lims), display = "filled.contour2", col = c(NA,
-            "gray80", "gray60", "gray40"))
+cumulative_func = function (ts_full){
+    ts_full = ts_full[-c(1,nrow(ts_full)),-c(1,8,9,10)]
+    na_rm = na.omit(ts_full)
+    na_rm$csum_gpp = ave(na_rm$GPP, na_rm$Year, FUN=cumsum)
+    na_rm$csum_er = ave(na_rm$ER, na_rm$Year, FUN=cumsum)
+    na_rm$csum_npp = ave(na_rm$NPP, na_rm$Year, FUN=cumsum)
+    lim = max(abs(na_rm[, c("csum_gpp", "csum_er")]))
+    pal = rev(brewer.pal(7, "Spectral"))
+    cols = setNames(data.frame(unique(na_rm$Year), pal[1:length(unique(na_rm[,
+        "Year"]))]), c("Year", "color"))
+    csum_merge = merge(na_rm, cols, by="Year", type="left")
+    plot(csum_merge$DOY, csum_merge$csum_gpp, pch=20,
+        cex=1.5, col=paste(csum_merge$color), type='p',
+        ylim=c(0, lim), xaxt="n", xlim=c(0, 366), ylab="Cumulative GPP")
+    legend("topleft", paste(c(cols$Year)), lwd=c(1, 1),
+        col=paste(cols$color), cex=0.9)
+    plot(csum_merge$DOY, csum_merge$csum_er, pch=20,
+        cex=1.5, col=paste(csum_merge$color), type='p',
+        ylim=c(-lim, 0), xaxt="n", xlim=c(0, 366), ylab="Cumulative ER")
+    plot(csum_merge$DOY, csum_merge$csum_npp, pch=20,
+        cex=1.5, col=paste(csum_merge$color), ylim=c(-lim, lim),
+        ylab="Cumulative NPP", xlim=c(0, 366),
+        xlab='', type='p', xaxt='n')
+    month_labs = month.abb
+    month_labs[seq(2, 12, 2)] = ''
+    axis(1, seq(1, 365, length.out=12), month_labs)
+    abline(h=0, col="grey60", lty=2)
+}
+kernel_func = function (ts_full, main){
+    ts_full = ts_full[-c(1,nrow(ts_full)),-c(1,8,9,10)]
+
+    kernel = kde(na.omit(ts_full[, c('GPP', 'ER')]))
+    k_lims = max(abs(c(min(ts_full$ER, na.rm=TRUE),
+        max(ts_full$GPP, na.rm=TRUE))))
+    plot(kernel, xlab=expression(paste("GPP (gO"[2] * " m"^"-2" *
+            " d"^"-1" * ")")),
+        ylab=expression(paste("ER (gO"[2] * " m"^"-2" * " d"^"-1" * ")")),
+        ylim=c(-k_lims, 0), xlim=c(0, k_lims), display="filled.contour2",
+        col=c(NA, "gray80", "gray60", "gray40"))
     mtext(main, 3, line=-2)
     abline(0, -1)
-    legend("topright", c("75%", "50%", "25%"), bty = "n", lty = c(1,
-        1, 1), lwd = 2, col = c("gray80", "gray60", "gray40"))
+    legend("topright", c("75%", "50%", "25%"), bty="n", lty=c(1,
+        1, 1), lwd=2, col=c("gray80", "gray60", "gray40"))
 }
-ts=predictions[,c('date','GPP','ER','GPP.lower','GPP.upper','ER.lower',
-    'ER.upper')]; date_var='date'; gpp_var='GPP'
+# ts=predictions[,c('date','GPP','ER','GPP.lower','GPP.upper','ER.lower',
+    # 'ER.upper')]; date_var='date'; gpp_var='GPP'
 # er_var='ER'; main='PR_Icacos'
-ts = processing_func(ts_full)
-diag_plots = function (ts, date_var, gpp_var, er_var, main){
-    ts_full <- processing_func(ts, date_var, gpp_var, er_var)
-    layout(matrix(c(1, 1, 3, 1, 1, 4, 2, 2, 5), 3, 3, byrow = TRUE),
-        widths = c(1, 1, 2))
-    par(cex = 0.6)
-    par(mar = c(3, 4, 0.1, 0.1), oma = c(3, 0.5, 0.5, 0.5))
-    par(tcl = -0.25)
-    par(mgp = c(2, 0.6, 0))
-    kernel_func(ts_full, gpp_var, er_var, main)
-    par(mar = c(0, 4, 2, 0.1))
-    season_ts_func(ts_full, gpp_var, er_var)
-    par(mar = c(0, 4, 0, 0.1))
-    cumulative_func(ts_full, gpp_var, er_var)
+diag_plots = function (ts, main){
+    ts_full = processing_func(ts)
+    layout(matrix(c(1, 1, 3, 1, 1, 4, 2, 2, 5), 3, 3, byrow=TRUE),
+        widths=c(1, 1, 2))
+    par(cex=0.6)
+    par(mar=c(3, 4, 0.1, 0.1), oma=c(3, 0.5, 0.5, 0.5))
+    par(tcl=-0.25)
+    par(mgp=c(2, 0.6, 0))
+    kernel_func(ts_full, main)
+    par(mar=c(0, 4, 2, 0.1))
+    season_ts_func(ts_full)
+    par(mar=c(0, 4, 0, 0.1))
+    cumulative_func(ts_full)
 }
+# ts_full = processing_func(predictions)
+# diag_plots(predictions, 'PR_Icacos')
+
 
 #choices ####
 
@@ -168,6 +167,8 @@ site_code = "SE_AbiskoM17"; start_date = "2016-06-15"; end_date = '2016-09-08'
 site_code = "SE_M18"; start_date = "2016-06-08"; end_date = '2016-10-22'
 site_code = "SE_M6"; start_date = "2016-06-08"; end_date = '2016-10-22'
 site_code = "PR_QS"; start_date = "2015-01-01"; end_date = '2015-11-30'#ed "2017-12-20"
+# site_code = "PR_RioIcacosTrip"
+# site_code = "PR_Prieta"
 site_code = "RI_CorkBrk"; start_date = "2016-01-01"; end_date = '2016-12-31'#ed "2017-01-03", sd=2014-06-23
 #site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
 #site_code = "CT_HUBB"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
@@ -212,7 +213,8 @@ streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
     flags=TRUE)
     # flags=TRUE, token='67f2d1a026b6c9e3446e') #gerard
-    flags=TRUE, token='7e4cd63a38de5d4a4715') #maria
+    # flags=TRUE, token='7e4cd63a38de5d4a4715') #maria
+    flags=TRUE, token='cfb849bbcbe2aa5859d0') #miguel
 head(streampulse_data$data)
 unique(streampulse_data$data$variable)
 sum(streampulse_data$data$flagtype != '')
@@ -384,7 +386,7 @@ saveRDS(predictions, paste('~/Desktop/untracked/sm_out/predictions',
 pdf(width=7, height=7,
     file=paste0('~/Desktop/untracked/sm_figs/output2_',
     site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
-diag_plots(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER', 'PR_Icacos')
+diag_plots(predictions[,c('date','GPP','ER')], 'PR_Icacos')
 dev.off()
 
 # average_plot(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
