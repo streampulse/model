@@ -146,6 +146,8 @@ site_code = "SE_AbiskoM17"; start_date = "2016-06-15"; end_date = '2016-09-08'
 site_code = "SE_M18"; start_date = "2016-06-08"; end_date = '2016-10-22'
 site_code = "SE_M6"; start_date = "2016-06-08"; end_date = '2016-10-22'
 site_code = "PR_QS"; start_date = "2015-01-01"; end_date = '2015-11-30'#ed "2017-12-20"
+site_code = "PR_Icacos"; start_date = "2016-10-01"; end_date = '2016-12-01'#ed "2017-12-20"
+site_code = "PR_RioIcacosTrib"
 site_code = "RI_CorkBrk"; start_date = "2016-01-01"; end_date = '2016-12-31'#ed "2017-01-03", sd=2014-06-23
 #site_code = "CT_BUNN"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-15"
 #site_code = "CT_HUBB"; start_date = "2015-05-20"; end_date = '2016-05-20'#ed "2016-11-11"
@@ -179,8 +181,11 @@ site_code = "NC_Eno"; start_date = "2017-01-01"; end_date = "2017-10-20"#2016-07
 # site_code = "NC_UNHC"; start_date = "2017-01-01"; end_date = "2017-12-11" #2016-07-12
 # site_code = 'WI_BEC'; start_date = '2017-01-26'; end_date = '2018-01-25' #2009-10-02; 2018-01-25
 # site_code = 'WI_BRW'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
-site_code = 'FL'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
-
+site_code = 'FL_WS1500'; start_date = '2016-08-01'; end_date = '2016-08-31' #2014-06-13; 2018-01-26
+site_code = 'FL_WS1500'; start_date = '2016-09-01'; end_date = '2016-10-26' #2014-06-13; 2018-01-26
+sitecode = 'FL_WS1500'; startdate = '2016-09-01'; enddate = '2016-10-26' #2014-06-13; 2018-01-26
+sitecode = 'FL_WS1500'; startdate = '2014-09-01'; enddate = '2014-10-26' #2014-06-13; 2018-01-26
+flags=TRUE; token=NULL; variables=NULL
 
 #run ####
 # source('~/git/streampulse/model/sp_functions.R')
@@ -189,6 +194,7 @@ site_code = 'FL'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13
 streampulse_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date, variables=NULL,
     flags=TRUE)
+    flags=TRUE, token='cfb849bbcbe2aa5859d0') #miguel
     # flags=TRUE, token='67f2d1a026b6c9e3446e') #gerard
     # flags=TRUE, token='7e4cd63a38de5d4a4715') #maria
 head(streampulse_data$data)
@@ -237,6 +243,7 @@ Q = zq[zq$site == site, 'discharge_cms']
 fitdata = prep_metabolism(d=streampulse_data, type='bayes',
     model='streamMetabolizer', interval='15 min',
     rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps,
+    estimate_areal_depth=TRUE)
     # zq_curve=list(sensor_height=NULL, fit='power',
     # zq_curve=list(sensor_height=NULL, a=.316, b=9.529, fit='power',
         # plot=TRUE),
@@ -245,7 +252,7 @@ fitdata = prep_metabolism(d=streampulse_data, type='bayes',
     # zq_curve=list(sensor_height=NULL, Z=Z, Q=Q, a=NULL, b=NULL,
         # fit='linear', plot=TRUE),
         # fit='power', plot=TRUE),
-    estimate_areal_depth=TRUE)
+    # estimate_areal_depth=TRUE)
 
 # apply(fitdata[,-1], 2, function(x) sum(is.infinite(x)))
 
