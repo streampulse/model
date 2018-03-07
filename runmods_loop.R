@@ -42,7 +42,7 @@ processing_func = function (ts) {
     ts_full$NPP = ts_full$GPP + ts_full$ER
     return(ts_full)
 }
-season_ts_func = function (ts_full){
+season_ts_func = function (ts_full, suppress_NEP=FALSE){
 
     ts_full = ts_full[-c(1,nrow(ts_full)),-c(1,8,9,10,11)]
 
@@ -66,7 +66,7 @@ season_ts_func = function (ts_full){
                 " m"^"-2" * " d"^"-1")), ylim=c(llim, ulim), lwd=2,
         xaxt='n', xlim=c(1, 366))
     polygon(x=c(doy, rev(doy)),
-        y=c(gpplo, rev(gppup)), col=adjustcolor('red',alpha.f=0.15),
+        y=c(gpplo, rev(gppup)), col=adjustcolor('red', alpha.f=0.2),
         border=NA)
     # t = avg_trajectory$Date
     # yearstarts = match(unique(substr(t,1,4)), substr(t,1,4))
@@ -77,13 +77,31 @@ season_ts_func = function (ts_full){
     # axis(1, monthstarts[-1], month_abbs[-1])
     lines(doy, avg_trajectory$ER, col="steelblue", lwd=2)
     polygon(x=c(doy, rev(doy)),
-        y=c(erlo, rev(erup)), col=adjustcolor('steelblue',alpha.f=0.15),
+        y=c(erlo, rev(erup)), col=adjustcolor('steelblue', alpha.f=0.2),
         border=NA)
-    lines(avg_trajectory$DOY, avg_trajectory$NPP, col="darkorchid3", lwd=2)
     abline(h=0)
-    legend("topleft", inset=c(0.1, -0.15), ncol=3, xpd=TRUE,
-        c("GPP", "NEP", "ER"), bty="n", lty=c(1, 1, 1),
-        lwd=2, col=c("red", "darkorchid3", "steelblue"))
+    if(suppress_NEP){
+        # plot(1,1, col=adjustcolor('red',alpha.f=0.2))
+        legend("topleft", inset=c(0.1, -0.1), ncol=2, xpd=TRUE,
+            c("GPP", "ER"), bty="n", lty=1,
+            # c("GPP", "ER", 'GPP 95% CI', 'ER 95% CI'), bty="n", lty=1,
+            lwd=2, col=c("red", "steelblue"))
+                # adjustcolor('red', alpha.f=0.2),
+                # adjustcolor('steelblue', alpha.f=0.2)),
+            # x.intersp=c(.5,.5,.3,1.3), text.width=.05)
+    } else {
+        lines(avg_trajectory$DOY, avg_trajectory$NPP, col="darkorchid3", lwd=2)
+        # plot(1,1, col=adjustcolor('red',alpha.f=0.2))
+        legend("topleft", ncol=3, xpd=TRUE,
+        # legend("topleft", ncol=5, xpd=TRUE,
+            c("GPP", "NEP", "ER"), bty="n", lty=1,
+            # c("GPP", "NEP", "ER", 'GPP 95% CI', 'ER 95% CI'), bty="n", lty=1,
+            lwd=2, col=c("red", "darkorchid3", "steelblue"),
+                # adjustcolor('red', alpha.f=0.2),
+                # adjustcolor('steelblue', alpha.f=0.2)),
+            inset=c(0, -0.1))
+        # x.intersp=c(.5,.5,.5,.3,1.3), text.width=.05)
+    }
     month_labs = month.abb
     month_labs[seq(2, 12, 2)] = ''
     axis(1, seq(1, 365, length.out=12), month_labs)
@@ -132,7 +150,7 @@ kernel_func = function (ts_full, main){
     legend("topright", c("75%", "50%", "25%"), bty="n", lty=c(1,
         1, 1), lwd=2, col=c("gray80", "gray60", "gray40"))
 }
-diag_plots = function (ts, main){
+diag_plots = function (ts, main, suppress_NEP=FALSE){
     ts_full = processing_func(ts)
     layout(matrix(c(1, 1, 3, 1, 1, 4, 2, 2, 5), 3, 3, byrow=TRUE),
         widths=c(1, 1, 2))
@@ -142,16 +160,16 @@ diag_plots = function (ts, main){
     par(mgp=c(2, 0.6, 0))
     kernel_func(ts_full, main)
     par(mar=c(0, 4, 2, 0.1))
-    season_ts_func(ts_full)
+    season_ts_func(ts_full, suppress_NEP)
     par(mar=c(0, 4, 0, 0.1))
     cumulative_func(ts_full)
 }
 
 # choose sites and dates ####
 site_deets = data.frame(
-    site_code=c('PR_Icacos')
-    start_date = c('2017-03-01')
-    end_date = c('2017-12-31')
+    site_code=c('PR_QS', 'PR_Icacos'),
+    start_date = c('2017-03-01', '2017-03-01'),
+    end_date = c('2017-12-31', '2017-12-31'),
     stringsAsFactors=FALSE)
 
 # site_deets = site_deets[1,]
@@ -239,13 +257,13 @@ for(i in 1:nrow(site_deets)){
     saveRDS(predictions, paste('sm_out/predictions',
         site_code, start_date, end_date,
         'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
-    #predictions = readRDS('sm_out/predictions_NC_Eno_2017-01-01_2017-02-01_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds')
+    # predictions = readRDS('sm_out/predictions_PR_Icacos_2017-03-01_2017-12-31_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds')
 
     #plot output
     pdf(width=7, height=7,
         file=paste0('sm_figs/output2_',
             site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
-    diag_plots(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
+    diag_plots(predictions, site_code, suppress_NEP=TRUE)
     dev.off()
 
     results[i,3] = 'Run Finished'
