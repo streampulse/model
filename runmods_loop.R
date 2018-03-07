@@ -17,8 +17,8 @@ setwd('C:/Users/vlahm/Desktop/untracked')
 processing_func = function (ts) {
     gpp = ts$GPP; gppup = ts$GPP.upper; gpplo = ts$GPP.lower
     er = ts$ER; erup = ts$ER.upper; erlo = ts$ER.lower
-    ts[!is.na(gpp) & gpp < 0 | !is.na(gpp) & gpp > 100, 'GPP'] = NA
-    ts[!is.na(er) & er > 0, 'ER'] = NA
+    # ts[!is.na(gpp) & gpp < 0 | !is.na(gpp) & gpp > 100, 'GPP'] = NA
+    # ts[!is.na(er) & er > 0, 'ER'] = NA
     # if('tbl' %in% class(ts$date)){
 
     # full_dates = as.data.frame(ts$date)
@@ -66,7 +66,7 @@ season_ts_func = function (ts_full, suppress_NEP=FALSE){
                 " m"^"-2" * " d"^"-1")), ylim=c(llim, ulim), lwd=2,
         xaxt='n', xlim=c(1, 366))
     polygon(x=c(doy, rev(doy)),
-        y=c(gpplo, rev(gppup)), col=adjustcolor('red', alpha.f=0.2),
+        y=c(gpplo, rev(gppup)), col=adjustcolor('red', alpha.f=0.3),
         border=NA)
     # t = avg_trajectory$Date
     # yearstarts = match(unique(substr(t,1,4)), substr(t,1,4))
@@ -77,28 +77,31 @@ season_ts_func = function (ts_full, suppress_NEP=FALSE){
     # axis(1, monthstarts[-1], month_abbs[-1])
     lines(doy, avg_trajectory$ER, col="steelblue", lwd=2)
     polygon(x=c(doy, rev(doy)),
-        y=c(erlo, rev(erup)), col=adjustcolor('steelblue', alpha.f=0.2),
+        y=c(erlo, rev(erup)), col=adjustcolor('steelblue', alpha.f=0.3),
         border=NA)
     abline(h=0)
     if(suppress_NEP){
         # plot(1,1, col=adjustcolor('red',alpha.f=0.2))
-        legend("topleft", inset=c(0.1, -0.1), ncol=2, xpd=TRUE,
-            c("GPP", "ER"), bty="n", lty=1,
-            # c("GPP", "ER", 'GPP 95% CI', 'ER 95% CI'), bty="n", lty=1,
-            lwd=2, col=c("red", "steelblue"))
-                # adjustcolor('red', alpha.f=0.2),
-                # adjustcolor('steelblue', alpha.f=0.2)),
-            # x.intersp=c(.5,.5,.3,1.3), text.width=.05)
+        legend("topleft", inset=c(0, -0.1), ncol=2, xpd=TRUE,
+            legend=c("GPP", "ER"), bty="n", lty=1,
+            lwd=2, col=c("red", "steelblue"),
+            x.intersp=c(.5,.5))#, text.width=.05)
+        legend('topright', inset=c(0.1, -0.1), ncol=2, xpd=TRUE,
+            bty="n", lty=1, legend=c('','95CI'),
+            col=c(adjustcolor('red', alpha.f=0.3),
+                adjustcolor('steelblue', alpha.f=0.3)),
+            x.intersp=c(-.1,.5), text.width=.05, lwd=3)
+
     } else {
         lines(avg_trajectory$DOY, avg_trajectory$NPP, col="darkorchid3", lwd=2)
         # plot(1,1, col=adjustcolor('red',alpha.f=0.2))
         legend("topleft", ncol=3, xpd=TRUE,
         # legend("topleft", ncol=5, xpd=TRUE,
             c("GPP", "NEP", "ER"), bty="n", lty=1,
-            # c("GPP", "NEP", "ER", 'GPP 95% CI', 'ER 95% CI'), bty="n", lty=1,
+            # c("GPP", "NEP", "ER", '', '95CI'), bty="n", lty=1,
             lwd=2, col=c("red", "darkorchid3", "steelblue"),
-                # adjustcolor('red', alpha.f=0.2),
-                # adjustcolor('steelblue', alpha.f=0.2)),
+                # adjustcolor('red', alpha.f=0.3),
+                # adjustcolor('steelblue', alpha.f=0.3)),
             inset=c(0, -0.1))
         # x.intersp=c(.5,.5,.5,.3,1.3), text.width=.05)
     }
@@ -171,6 +174,8 @@ site_deets = data.frame(
     start_date = c('2017-03-01', '2017-03-01'),
     end_date = c('2017-12-31', '2017-12-31'),
     stringsAsFactors=FALSE)
+site_code='PR_QS'; start_date='2017-03-01'; end_date='2017-12-31'
+site_code='PR_Icacos'; start_date='2017-03-01'; end_date='2017-12-31'
 
 # site_deets = site_deets[1,]
 # site_deets[,3] = '2017-02-01'
@@ -257,11 +262,11 @@ for(i in 1:nrow(site_deets)){
     saveRDS(predictions, paste('sm_out/predictions',
         site_code, start_date, end_date,
         'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
-    # predictions = readRDS('sm_out/predictions_PR_Icacos_2017-03-01_2017-12-31_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds')
+    predictions = readRDS('~/Desktop/untracked/PR/predictions_PR_Icacos_2017-03-01_2017-12-31_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds')
 
     #plot output
     pdf(width=7, height=7,
-        file=paste0('sm_figs/output2_',
+        file=paste0('sm_figs/output_',
             site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
     diag_plots(predictions, site_code, suppress_NEP=TRUE)
     dev.off()
