@@ -1,15 +1,13 @@
 #StreamPULSE model script
-#all sites, round 1
 #Mike Vlah: vlahm13@gmail.com
-#2/5/18
+#last update 3/14/2018
 
 #if you're using RStudio, you can collapse sections with
 #Alt+o (Windows/Linux) or Cmd+Opt+o (Mac)
 
 rm(list=ls()); cat('\014') #clear environment and console
-setwd('MODIFY_PATH_HERE/streampulse_model_runs_round1') #set working directory
 
-#install/update streamMetabolizer ####
+#install/update and load streamMetabolizer and StreamPULSE packages ####
 
 #install latest version if you don't have streamMetabolizer already
 install.packages('streamMetabolizer', dependencies=TRUE,
@@ -19,94 +17,36 @@ install.packages('streamMetabolizer', dependencies=TRUE,
 update.packages(oldPkgs=c('streamMetabolizer','unitted'), dependencies=TRUE,
     repos=c('https://owi.usgs.gov/R', 'https://cran.rstudio.com'))
 
-#load packages and StreamPULSE functions ####
+#install StreamPULSE package
+library(devtools) #devtools is necessary for installing packages from GitHub.
+install_github('streampulse/StreamPULSE', dependencies=TRUE)
 
-library(dplyr)
-library(httr)
-library(jsonlite)
+#load packages
 library(streamMetabolizer)
-library(tidyr)
-library(imputeTS)
-library(zoo)
-library(accelerometry)
-library(geoknife) #for acquiring air pressure if necessary
-# library(R2jags) # only required for BASE
-# library(coda) # only required for BASE
+library(StreamPULSE)
 
-# This sources our StreamPULSE functions from GitHub (R package coming soon)
-sp_functions = GET('https://raw.githubusercontent.com/streampulse/model/master/sp_functions.R')
-eval(parse(text=content(sp_functions, as='text', encoding='UTF-8')), envir=.GlobalEnv)
-
-# Source gapfilling functions
-gapfill_functions = GET('https://raw.githubusercontent.com/streampulse/model/master/gapfill_functions.R')
-eval(parse(text = content(gapfill_functions, as='text', encoding='UTF-8')),
-    envir= .GlobalEnv)
-
-# Source BASE functions (not needed for this script)
-# BASE_functions = GET('https://raw.githubusercontent.com/streampulse/model/master/BASE_functions.R')
-# eval(parse(text = content(BASE_functions, as='text', encoding='UTF-8')),
-#     envir= .GlobalEnv)
-
-#model setup (see https://data.streampulse.org/model for details) ####
+#model setup (see documentation for details) ####
 
 model_type = 'bayes'
 model_name = 'streamMetabolizer'
-fillgaps = 'interpolation'
-interval = '15 min'
 
-#choose site and dates (commented sites still have issues,
-#which are detailed in notes_from_model_runs.csv).
-#if full time span was not used, alternative dates are given as comments.
-
-site_code = 'AZ_LV'; start_date = '2017-08-07'; end_date = '2017-12-25' #2017-07-07 (avoiding large gap)
-site_code = 'AZ_OC'; start_date = '2016-11-15'; end_date = '2017-12-03' #2016-11-13 (avoiding outlier section)
-site_code = 'AZ_SC'; start_date = '2017-02-08'; end_date = '2017-03-28'
-#site_code = 'AZ_WB'; start_date = '2017-08-04'; end_date = '2017-12-27'
-site_code = 'CT_BUNN'; start_date = '2015-05-20'; end_date = '2016-05-20' #2016-11-15
-site_code = 'CT_HUBB'; start_date = '2015-05-20'; end_date = '2016-05-20' #2016-11-11
-site_code = 'CT_Unio'; start_date = '2015-05-20'; end_date = '2016-05-20' #2016-11-11
-site_code = 'CT_STIL'; start_date = '2015-05-20'; end_date = '2016-05-20' #2016-11-15
-#site_code = 'CT_FARM'; start_date = '2015-05-20'; end_date = '2016-05-20' #2016-11-11
-site_code = 'MD_GFVN'; start_date = '2016-02-18'; end_date = '2016-11-19'
-site_code = 'MD_GFCP'; start_date = '2016-05-07'; end_date = '2016-11-19'
-site_code = 'MD_GFGB'; start_date = '2016-02-19'; end_date = '2016-11-11'
-site_code = 'MD_DRKR'; start_date = '2016-02-18'; end_date = '2016-11-19'
-site_code = 'MD_POBR'; start_date = '2016-02-19'; end_date = '2016-11-19'
-site_code = 'MD_BARN'; start_date = '2016-02-19'; end_date = '2016-11-19'
-site_code = 'NC_Eno'; start_date = '2016-07-11'; end_date = '2017-08-30'
-#site_code = 'NC_UEno'; start_date = '2016-07-12'; end_date = '2017-08-30'
-#site_code = 'NC_Stony'; start_date = '2016-06-30'; end_date = '2017-08-09'
-#site_code = 'NC_NHC'; start_date = '2016-09-14'; end_date = '2017-09-13'
-#site_code = 'NC_UNHC'; start_date = '2016-07-12'; end_date = '2017-08-30'
-#site_code = 'NC_Mud'; start_date = '2016-07-12'; end_date = '2017-08-30'
-#site_code = 'PR_QS'; start_date = '2014-03-10'; end_date = '2015-03-10' #2017-12-20
-#site_code = 'PR_Icacos'; start_date = '2016-06-09'; end_date = '2016-12-15'
-#site_code = 'RI_CorkBrk'; start_date = '2015-06-23'; end_date = '2016-06-22' #2014-06-23; 2017-01-03
-site_code = 'VT_Pass'; start_date = '2015-06-26'; end_date = '2016-06-25' #2016-10-27
-site_code = 'VT_POPE'; start_date = '2015-06-03'; end_date = '2016-06-02' #2016-11-11
-site_code = 'VT_MOOS'; start_date = '2015-06-03'; end_date = '2016-11-11' #2016-11-11
-site_code = 'VT_SLPR'; start_date = '2015-06-03'; end_date = '2016-06-03' #2016-11-11
-site_code = 'WI_BEC'; start_date = '2017-01-26'; end_date = '2018-01-25' #2009-10-02; 2018-01-25
-site_code = 'WI_BRW'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
+#choose site and dates (see data.streampulse.org/sitelist for site codes).
+#see data.streampulse.org/visualize for available dates.
+site_code = 'SE_M6'; start_date = '2016-06-08'; end_date = '2016-10-12'
+site_code = 'SE_M18'; start_date = '2016-06-08'; end_date = '2016-10-12'
 
 #retrieve data from StreamPULSE database
 streampulse_data = request_data(sitecode=site_code,
-    startdate=start_date, enddate=end_date, variables=NULL,
-    flags=TRUE, token=NULL)
+    startdate=start_date, enddate=end_date)
 
 #acquire additional data if necessary; format for streamMetabolizer
 fitdata = prep_metabolism(d=streampulse_data, type=model_type,
-    model=model_name, interval=interval,
-    rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps)
+    model=model_name)
 
 #model ####
 
-#see what you're dealing with (uncomment lines below to save pdf.
-#make sure working directory is set at top of script if you do.)
-#note that existing plots will overwritten unless you move or rename them.
+#see what you're dealing with
 plotvars = colnames(fitdata)[! colnames(fitdata) %in% c('solar.time')]
-# pdf(width=5, height=9, file=paste0('figs/input_',
-#     site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
 par(mfrow=c(length(plotvars),1), mar=c(0,0,0,0), oma=c(4,4,.5,.5))
 t = as.Date(fitdata$solar.time)
 for(i in plotvars){
@@ -119,7 +59,6 @@ for(i in plotvars){
         axis(1, monthstarts, substr(t[monthstarts],6,7))
     }
 }
-# dev.off()
 
 #fit model with stock parameters (uncomment next block for more options)
 modelfit = fit_metabolism(fitdata)
@@ -142,13 +81,6 @@ modelfit = fit_metabolism(fitdata)
 max(modelfit@fit$daily$K600_daily_mean, na.rm=TRUE) #max daily k
 plot(density(modelfit@fit$daily$K600_daily_mean, na.rm=TRUE)) #distribution
 
-#save streamMetabolizer output if desired
-saveRDS(modelfit, paste('mod_objects/fit', site_code, start_date, end_date,
-    'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
-
-#read streamMetabolizer output back in later (uncomment and specify path)
-# modelfit = readRDS(paste0('mod_objects/fit_....rds'))
-
 #check estimated daily k-ER correlation
 daily_er = modelfit@fit$daily$ER_daily_mean
 daily_k = modelfit@fit$daily$K600_daily_mean
@@ -162,31 +94,166 @@ cor(daily_k, daily_er) #Pearson coefficient (> 0.6 is cause for concern)
 #get model predictions
 predictions = predict_metabolism(modelfit)
 
-#save predictions if desired
-#note that existing prediction objects will overwritten unless
-#you move or rename them.
-saveRDS(predictions, paste('mod_objects/predictions',
-    site_code, start_date, end_date,
-    'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
+#plot ####
 
-#source functions from Phil's forthcoming MetaboPlots package. load dependencies
-source('MetaboPlots_prerelease.R')
+#load additional packages for plotting
 library(ks)
 library(RColorBrewer)
 
-#plot metabolism, cumulative GPP-ER, GPP x ER kernel density
-#uncomment lines below to save plots. note that existing plots will be
-#overwritten unless you move or rename them.
-p = processing_func(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
-# pdf(width=7, height=7, file=paste0('figs/output_',
-#     site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
-diag_plots(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
-# dev.off()
+#source MetaboPlots functions (package coming soon?)
+processing_func = function (ts) {
+    gpp = ts$GPP; gppup = ts$GPP.upper; gpplo = ts$GPP.lower
+    er = ts$ER; erup = ts$ER.upper; erlo = ts$ER.lower
+    # ts[!is.na(gpp) & gpp < 0 | !is.na(gpp) & gpp > 100, 'GPP'] = NA
+    # ts[!is.na(er) & er > 0, 'ER'] = NA
+    # if('tbl' %in% class(ts$date)){
 
-#if the above plot doesn't work, this can get you started
-ymin = min(c(predictions$ER,predictions$GPP), na.rm=TRUE)
-ymax = max(c(predictions$ER,predictions$GPP), na.rm=TRUE)
-plot(predictions$GPP, type='l', ylim=c(ymin, ymax),
-    main='', xlab='Date Index', ylab='g O2/m^2/d', las=1)
-lines(predictions$ER, col='red')
-legend('topright', legend=c('GPP','ER'), lty=1, col=c('black','red'), bty='n')
+    # full_dates = as.data.frame(ts$date)
+    # colnames(full_dates) = 'Date'
+
+    # colnames(ts)[which(colnames(ts) == 'date')] = 'Date'
+    ts_full = as.data.frame(ts)
+    # } else {
+    #     ts_date = ts$date
+    #     ts$Date = format(ts_date, "%Y-%m-%d")
+    #     full_dates = setNames(data.frame(
+    #         seq(from = as.Date(paste(min(format(ts$date, "%Y")),
+    #             "-01-01", sep = "")),
+    #             to = as.Date(paste(max(format(ts[,
+    #                 date_var], "%Y")), "-12-31", sep = "")), by = 1)), "Date")
+    # }
+
+    # ts_full = merge(full_dates, ts, by = c("Date"), all = TRUE)
+    ts_full$Year = as.numeric(format(ts_full$date, "%Y"))
+    ts_full$DOY = as.numeric(format(ts_full$date, "%j"))
+    ts_full$NPP = ts_full$GPP + ts_full$ER
+    return(ts_full)
+}
+season_ts_func = function (ts_full, suppress_NEP=FALSE){
+
+    ts_full = ts_full[-c(1,nrow(ts_full)),-c(1,8,9,10,11)]
+
+    avg_trajectory = aggregate(ts_full, by=list(ts_full$DOY),
+        FUN=mean, na.rm=TRUE)
+
+    gpp = avg_trajectory$GPP
+    gppup = avg_trajectory$GPP.upper; gpplo = avg_trajectory$GPP.lower
+    er = avg_trajectory$ER
+    erup = avg_trajectory$ER.upper; erlo = avg_trajectory$ER.lower
+    doy = avg_trajectory$DOY
+
+    sd_trajectory = aggregate(ts_full, by=list(ts_full$DOY),
+        FUN=sd, na.rm=TRUE)
+
+    llim = min(c(gpplo, erlo), na.rm=TRUE)
+    ulim = max(c(gppup, erup), na.rm=TRUE)
+    # plot(avg_trajectory[, gpp_var],
+    plot(doy, avg_trajectory$GPP,
+        type="l", col="red", xlab='', ylab=expression(paste("gO"[2] *
+                " m"^"-2" * " d"^"-1")), ylim=c(llim, ulim), lwd=2,
+        xaxt='n', xlim=c(1, 366))
+    polygon(x=c(doy, rev(doy)),
+        y=c(gpplo, rev(gppup)), col=adjustcolor('red', alpha.f=0.3),
+        border=NA)
+    # t = avg_trajectory$Date
+    # yearstarts = match(unique(substr(t,1,4)), substr(t,1,4))
+    # monthstarts = match(unique(substr(t,1,7)), substr(t,1,7))
+    # axis(1, yearstarts, rep('', length(yearstarts)), lwd.ticks=2, tck=-0.05)
+    # axis(1, yearstarts, substr(t[yearstarts],1,4), line=1, tick=FALSE)
+    # month_abbs = month.abb[as.numeric(substr(t[monthstarts],6,7))]
+    # axis(1, monthstarts[-1], month_abbs[-1])
+    lines(doy, avg_trajectory$ER, col="steelblue", lwd=2)
+    polygon(x=c(doy, rev(doy)),
+        y=c(erlo, rev(erup)), col=adjustcolor('steelblue', alpha.f=0.3),
+        border=NA)
+    abline(h=0)
+    if(suppress_NEP){
+        # plot(1,1, col=adjustcolor('red',alpha.f=0.2))
+        legend("topleft", inset=c(0, -0.1), ncol=2, xpd=TRUE,
+            legend=c("GPP", "ER"), bty="n", lty=1,
+            lwd=2, col=c("red", "steelblue"),
+            x.intersp=c(.5,.5))#, text.width=.05)
+        legend('topright', inset=c(0.1, -0.1), ncol=2, xpd=TRUE,
+            bty="n", lty=1, legend=c('','95CI'),
+            col=c(adjustcolor('red', alpha.f=0.3),
+                adjustcolor('steelblue', alpha.f=0.3)),
+            x.intersp=c(-.1,.5), text.width=.05, lwd=3)
+
+    } else {
+        lines(avg_trajectory$DOY, avg_trajectory$NPP, col="darkorchid3", lwd=2)
+        # plot(1,1, col=adjustcolor('red',alpha.f=0.2))
+        legend("topleft", ncol=3, xpd=TRUE,
+            # legend("topleft", ncol=5, xpd=TRUE,
+            c("GPP", "NEP", "ER"), bty="n", lty=1,
+            # c("GPP", "NEP", "ER", '', '95CI'), bty="n", lty=1,
+            lwd=2, col=c("red", "darkorchid3", "steelblue"),
+            # adjustcolor('red', alpha.f=0.3),
+            # adjustcolor('steelblue', alpha.f=0.3)),
+            inset=c(0, -0.1))
+        # x.intersp=c(.5,.5,.5,.3,1.3), text.width=.05)
+    }
+    month_labs = month.abb
+    month_labs[seq(2, 12, 2)] = ''
+    axis(1, seq(1, 365, length.out=12), month_labs)
+}
+cumulative_func = function (ts_full){
+    ts_full = ts_full[-c(1,nrow(ts_full)),-c(1,8,9,10)]
+    na_rm = na.omit(ts_full)
+    na_rm$csum_gpp = ave(na_rm$GPP, na_rm$Year, FUN=cumsum)
+    na_rm$csum_er = ave(na_rm$ER, na_rm$Year, FUN=cumsum)
+    na_rm$csum_npp = ave(na_rm$NPP, na_rm$Year, FUN=cumsum)
+    lim = max(abs(na_rm[, c("csum_gpp", "csum_er")]))
+    pal = rev(brewer.pal(7, "Spectral"))
+    cols = setNames(data.frame(unique(na_rm$Year), pal[1:length(unique(na_rm[,
+        "Year"]))]), c("Year", "color"))
+    csum_merge = merge(na_rm, cols, by="Year", type="left")
+    plot(csum_merge$DOY, csum_merge$csum_gpp, pch=20,
+        cex=1.5, col=paste(csum_merge$color), type='p',
+        ylim=c(0, lim), xaxt="n", xlim=c(0, 366), ylab="Cumulative GPP")
+    legend("topleft", paste(c(cols$Year)), lwd=c(1, 1),
+        col=paste(cols$color), cex=0.9)
+    plot(csum_merge$DOY, csum_merge$csum_er, pch=20,
+        cex=1.5, col=paste(csum_merge$color), type='p',
+        ylim=c(-lim, 0), xaxt="n", xlim=c(0, 366), ylab="Cumulative ER")
+    plot(csum_merge$DOY, csum_merge$csum_npp, pch=20,
+        cex=1.5, col=paste(csum_merge$color), ylim=c(-lim, lim),
+        ylab="Cumulative NPP", xlim=c(0, 366),
+        xlab='', type='p', xaxt='n')
+    month_labs = month.abb
+    month_labs[seq(2, 12, 2)] = ''
+    axis(1, seq(1, 365, length.out=12), month_labs)
+    abline(h=0, col="grey60", lty=2)
+}
+kernel_func = function (ts_full, main){
+    ts_full = ts_full[-c(1,nrow(ts_full)),-c(1,8,9,10)]
+
+    kernel = kde(na.omit(ts_full[, c('GPP', 'ER')]))
+    k_lims = max(abs(c(min(ts_full$ER, na.rm=TRUE),
+        max(ts_full$GPP, na.rm=TRUE))))
+    plot(kernel, xlab=expression(paste("GPP (gO"[2] * " m"^"-2" *
+            " d"^"-1" * ")")),
+        ylab=expression(paste("ER (gO"[2] * " m"^"-2" * " d"^"-1" * ")")),
+        ylim=c(-k_lims, 0), xlim=c(0, k_lims), display="filled.contour2",
+        col=c(NA, "gray80", "gray60", "gray40"))
+    mtext(main, 3, line=-2)
+    abline(0, -1)
+    legend("topright", c("75%", "50%", "25%"), bty="n", lty=c(1,
+        1, 1), lwd=2, col=c("gray80", "gray60", "gray40"))
+}
+diag_plots = function (ts, main, suppress_NEP=FALSE){
+    ts_full = processing_func(ts)
+    layout(matrix(c(1, 1, 3, 1, 1, 4, 2, 2, 5), 3, 3, byrow=TRUE),
+        widths=c(1, 1, 2))
+    par(cex=0.6)
+    par(mar=c(3, 4, 0.1, 0.1), oma=c(3, 0.5, 0.5, 0.5))
+    par(tcl=-0.25)
+    par(mgp=c(2, 0.6, 0))
+    kernel_func(ts_full, main)
+    par(mar=c(0, 4, 2, 0.1))
+    season_ts_func(ts_full, suppress_NEP)
+    par(mar=c(0, 4, 0, 0.1))
+    cumulative_func(ts_full)
+}
+
+#plot
+diag_plots(predictions, site_code, suppress_NEP=TRUE)

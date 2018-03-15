@@ -214,16 +214,18 @@ flags=TRUE; token=NULL; variables=NULL
 # source('~/git/streampulse/model/gapfill_functions.R')
 
 streampulse_data = request_data(sitecode=site_code,
-    startdate=start_date, enddate=end_date, variables=NULL,
+    # startdate=start_date, enddate=end_date, variables=NULL,
     flags=TRUE)
-    flags=TRUE, token='cfb849bbcbe2aa5859d0') #miguel
+    # flags=TRUE, token='cfb849bbcbe2aa5859d0') #miguel
     # flags=TRUE, token='67f2d1a026b6c9e3446e') #gerard
-    # flags=TRUE, token='7e4cd63a38de5d4a4715') #maria
+    flags=TRUE, token='7e4cd63a38de5d4a4715') #maria
     flags=TRUE, token='cfb849bbcbe2aa5859d0') #miguel
 head(streampulse_data$data)
 unique(streampulse_data$data$variable)
 sum(streampulse_data$data$flagtype != '')
 nrow(streampulse_data$data)
+streampulse_data$data$DateTime_UTC[1]
+streampulse_data$data$DateTime_UTC[nrow(streampulse_data$data)]
 # streampulse_data$data[streampulse_data$data$variable=='Light_PAR',
 #     c('variable','flagtype')]
 # z = streampulse_data$data
@@ -267,6 +269,7 @@ Q = zq[zq$site == site, 'discharge_cms']
 fitdata = prep_metabolism(d=streampulse_data, type='bayes',
     model='streamMetabolizer', interval='15 min',
     rm_flagged=list('Bad Data', 'Questionable'), fillgaps=fillgaps,
+    estimate_areal_depth=FALSE)
     estimate_areal_depth=TRUE)
     # zq_curve=list(sensor_height=NULL, fit='power',
     # zq_curve=list(sensor_height=NULL, a=.316, b=9.529, fit='power',
@@ -311,7 +314,7 @@ dev.off()
 modelfit = fit_metabolism(fitdata)
 
 
-modelfit = readRDS(paste0('~/Desktop/untracked/mod_fit_objects/fit_FL_WS1500_2017-01-01_2017-12-31_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
+# modelfit = readRDS(paste0('~/Desktop/untracked/mod_fit_objects/fit_FL_WS1500_2017-01-01_2017-12-31_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds'))
 max(modelfit@fit$daily$K600_daily_mean, na.rm=TRUE) #shoudnt be over 90
 plot(density(modelfit@fit$daily$K600_daily_mean, na.rm=TRUE))
 modelfit@fit$daily$K600_daily_mean
