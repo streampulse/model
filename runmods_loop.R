@@ -11,7 +11,9 @@ library(streamMetabolizer)
 library(ks)
 library(RColorBrewer)
 
-setwd('C:/Users/vlahm/Desktop/untracked')
+#expects sm_figs and sm_out directories at this location
+# setwd('C:/Users/vlahm/Desktop/untracked')
+setwd('~/Desktop/untracked')
 
 #metaboplots funcs
 processing_func = function (ts) {
@@ -170,16 +172,10 @@ diag_plots = function (ts, main, suppress_NEP=FALSE){
 
 # choose sites and dates ####
 site_deets = data.frame(
-    site_code=c('PR_QS', 'PR_Icacos'),
-    start_date = c('2017-03-01', '2017-03-01'),
-    end_date = c('2017-12-31', '2017-12-31'),
+    site_code = c('SE_M18','SE_M6'),#c('PR_QS', 'PR_Icacos'),
+    start_date = c('2016-06-08', '2016-06-08'),#c('2017-03-01', '2017-03-01'),
+    end_date = c('2016-10-12', '2016-10-12'),#c('2017-12-31', '2017-12-31'),
     stringsAsFactors=FALSE)
-site_code='PR_QS'; start_date='2017-03-01'; end_date='2017-12-31'
-site_code='PR_Icacos'; start_date='2017-03-01'; end_date='2017-12-31'
-
-# site_deets = site_deets[1,]
-# site_deets[,3] = '2017-02-01'
-# site_deets[,1] = 'NC_Eno'
 
 # run ####
 results = matrix('', ncol=5, nrow=nrow(site_deets))
@@ -262,7 +258,7 @@ for(i in 1:nrow(site_deets)){
     saveRDS(predictions, paste('sm_out/predictions',
         site_code, start_date, end_date,
         'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
-    predictions = readRDS('~/Desktop/untracked/PR/predictions_PR_Icacos_2017-03-01_2017-12-31_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds')
+    # predictions = readRDS('~/Desktop/untracked/PR/predictions_PR_Icacos_2017-03-01_2017-12-31_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds')
 
     #plot output
     pdf(width=7, height=7,
