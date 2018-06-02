@@ -16,7 +16,8 @@ library(RColorBrewer)
 
 #expects sm_figs and sm_out directories at this location
 # setwd('C:/Users/vlahm/Desktop/untracked')
-setwd('~/Desktop/untracked')
+setwd('D:/untracked')
+# setwd('~/Desktop/untracked')
 
 #metaboplots funcs
 processing_func = function (ts) {
@@ -174,41 +175,25 @@ diag_plots = function (ts, main, suppress_NEP=FALSE){
 }
 
 # choose sites and dates ####
-site_deets = data.frame(
-    site_code = c('SE_M18','SE_M6'),#c('PR_QS', 'PR_Icacos'),
-    start_date = c('2016-06-08', '2016-06-08'),#c('2017-03-01', '2017-03-01'),
-    end_date = c('2016-10-12', '2016-10-12'),#c('2017-12-31', '2017-12-31'),
-    stringsAsFactors=FALSE)
+# site_deets = data.frame(
+#     site_code = c('SE_M18','SE_M6'),#c('PR_QS', 'PR_Icacos'),
+#     start_date = c('2016-06-08', '2016-06-08'),#c('2017-03-01', '2017-03-01'),
+#     end_date = c('2016-10-12', '2016-10-12'),#c('2017-12-31', '2017-12-31'),
+#     stringsAsFactors=FALSE)
 
-
-site_names = c("SE_AbiskoM1", "SE_AbiskoM2", "SE_AbiskoM6", "SE_AbiskoM9", "SE_AbiskoM10", "SE_AbiskoM16", "SE_AbiskoM17",
-"SE_M18", "SE_M6", "PR_QS", "PR_Icacos", "RI_CorkBrk", "CT_BUNN", "CT_HUBB", "CT_FARM", "CT_Unio", "VT_Pass",
-"VT_POPE", "VT_MOOS", "PR_Icacos", "CT_STIL", "MD_GFVN", "MD_GFCP", "MD_GFGB", "MD_DRKR", "MD_POBR", "MD_BARN",
-"VT_SLPR", "AZ_LV", "AZ_OC", "AZ_SC", "AZ_WB", "NC_Eno", "NC_UEno", "NC_Stony", "NC_NHC", "NC_Mud", "NC_Eno",
-"NC_UEno", "NC_Stony", "NC_NHC", "NC_UNHC", 'WI_BEC', 'WI_BRW', 'FL_WS1500', 'FL_WS1500')
-
-tok = c('67f2d1a026b6c9e3446e', '67f2d1a026b6c9e3446e', '67f2d1a026b6c9e3446e', '67f2d1a026b6c9e3446e',
-        '67f2d1a026b6c9e3446e', '67f2d1a026b6c9e3446e', '67f2d1a026b6c9e3446e', '7e4cd63a38de5d4a4715',
-        '7e4cd63a38de5d4a4715', rep('cfb849bbcbe2aa5859d0', 37))
-
-starts = c("2016-01-01", "2016-01-01", "2016-01-01", "2016-01-01", "2016-01-01", "2016-01-01", "2016-01-01",
-"2016-01-01", "2016-01-01", "2015-01-01", "2016-01-01", "2016-01-01", "2015-01-01", "2015-01-01", "2015-01-01",
-"2015-01-01", "2015-01-01", "2015-01-01", "2015-01-01", "2016-01-01", "2015-01-01", "2016-01-01", "2016-01-01",
-"2016-01-01", "2016-01-01", "2016-01-01", "2016-01-01", "2015-01-01", "2017-01-01", "2016-01-01", "2017-01-01",
-"2017-01-01", "2017-01-01", "2017-01-01", "2016-01-01", "2016-01-01", "2017-01-01", "2017-01-01", "2017-01-01",
-"2016-01-01", "2017-01-01", "2017-01-01", "2017-01-26", "2017-01-01", "2016-01-01", "2016-01-01")
-
-ends = c("2016-12-31", "2016-12-31", "2016-12-31", "2016-12-31", "2016-12-31", "2016-12-31", "2016-12-31",
-"2016-12-31", "2016-12-31", "2015-12-31", "2016-12-31", "2016-12-31", "2016-12-31", "2016-12-31", "2016-12-31",
-"2016-12-31", "2016-12-31", "2016-12-31", "2016-12-31", "2016-12-31", "2016-12-31", "2016-12-31", "2016-12-31",
-"2016-12-31", "2016-12-31", "2016-12-31", "2016-12-31", "2016-12-31", "2017-12-31", "2017-12-31", "2017-12-31",
-"2017-12-31", "2017-12-31", "2017-12-31", "2017-12-31", "2017-12-31", "2017-12-31", "2017-12-31", "2017-12-31",
-"2017-12-31", "2018-12-31", "2017-12-31", "2018-12-31", "2018-12-31", "2016-12-31", "2016-12-31")
-
-site_deets = data.frame(site_code=site_names, tok=tok,
-                        start_date=starts, end_date=ends, stringsAsFactors=FALSE)
-
-site_deets = site_deets[1:23,]
+# write.csv(site_deets, 'site_deets.csv', row.names=FALSE)
+site_deets = read.csv('site_deets.csv', stringsAsFactors=FALSE)
+# site_deets = site_deets[substr(site_deets$site_code, 1, 2) != 'SE',]
+# site_deets = site_deets[site_deets$site_code != 'MD_DRKR',]
+site_deets = site_deets[site_deets$skip != 'x',]
+site_deets = site_deets[site_deets$site_code == 'MD_DRKR',]
+site_deets = site_deets[site_deets$site_code == 'FL_SF700',]
+site_deets = site_deets[site_deets$site_code == 'PR_QS',]
+md_drkr
+md_gfvn
+pr_qs
+dim(site_deets)
+site_deets = site_deets[29:57,]
 
 # run ####
 results = matrix('', ncol=5, nrow=nrow(site_deets))
@@ -305,4 +290,4 @@ for(i in 1:nrow(site_deets)){
 
 }
 
-write.csv(results, 'results.csv', row.names=FALSE)
+write.csv(results, 'results1.csv', row.names=FALSE)
