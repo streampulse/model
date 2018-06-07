@@ -1,10 +1,13 @@
 # setup ####
 
 rm(list=ls()); cat('\014')
+# install.packages('devtools')
 # library(devtools) #devtools is necessary for installing packages from GitHub.
 # install_github('streampulse/StreamPULSE', dependencies=TRUE)
 # install.packages('streamMetabolizer', dependencies=TRUE,
-                 # repos=c('https://owi.usgs.gov/R','https://cran.rstudio.com'))
+#                  repos=c('https://owi.usgs.gov/R','https://cran.rstudio.com'))
+# install.packages('ks')
+# install.packages('RColorBrewer')
 
 library(StreamPULSE)
 library(streamMetabolizer)
@@ -13,7 +16,8 @@ library(RColorBrewer)
 
 #expects sm_figs and sm_out directories at this location
 # setwd('C:/Users/vlahm/Desktop/untracked')
-setwd('~/Desktop/untracked')
+setwd('D:/untracked')
+# setwd('~/Desktop/untracked')
 
 #metaboplots funcs
 processing_func = function (ts) {
@@ -171,11 +175,25 @@ diag_plots = function (ts, main, suppress_NEP=FALSE){
 }
 
 # choose sites and dates ####
-site_deets = data.frame(
-    site_code = c('SE_M18','SE_M6'),#c('PR_QS', 'PR_Icacos'),
-    start_date = c('2016-06-08', '2016-06-08'),#c('2017-03-01', '2017-03-01'),
-    end_date = c('2016-10-12', '2016-10-12'),#c('2017-12-31', '2017-12-31'),
-    stringsAsFactors=FALSE)
+# site_deets = data.frame(
+#     site_code = c('SE_M18','SE_M6'),#c('PR_QS', 'PR_Icacos'),
+#     start_date = c('2016-06-08', '2016-06-08'),#c('2017-03-01', '2017-03-01'),
+#     end_date = c('2016-10-12', '2016-10-12'),#c('2017-12-31', '2017-12-31'),
+#     stringsAsFactors=FALSE)
+
+# write.csv(site_deets, 'site_deets.csv', row.names=FALSE)
+site_deets = read.csv('site_deets.csv', stringsAsFactors=FALSE)
+# site_deets = site_deets[substr(site_deets$site_code, 1, 2) != 'SE',]
+# site_deets = site_deets[site_deets$site_code != 'MD_DRKR',]
+site_deets = site_deets[site_deets$skip != 'x',]
+site_deets = site_deets[site_deets$site_code == 'MD_DRKR',]
+site_deets = site_deets[site_deets$site_code == 'FL_SF700',]
+site_deets = site_deets[site_deets$site_code == 'PR_QS',]
+md_drkr
+md_gfvn
+pr_qs
+dim(site_deets)
+site_deets = site_deets[29:57,]
 
 # run ####
 results = matrix('', ncol=5, nrow=nrow(site_deets))
@@ -184,6 +202,7 @@ colnames(results) = c('Region', 'Site', 'Result', 'Kmax', 'K_ER_cor')
 for(i in 1:nrow(site_deets)){
 
     site_code = site_deets$site_code[i]
+    token = site_deets$tok[i]
     start_date = site_deets$start_date[i]
     end_date = site_deets$end_date[i]
 
@@ -192,7 +211,7 @@ for(i in 1:nrow(site_deets)){
 
     #request
     streampulse_data = try(request_data(sitecode=site_code,startdate=start_date,
-                                    enddate=end_date))
+                                    enddate=end_date, token=token))
 
     if(class(streampulse_data) == 'try-error'){
         results[i,3] = 'request error'
@@ -271,4 +290,4 @@ for(i in 1:nrow(site_deets)){
 
 }
 
-write.csv(results, 'results.csv', row.names=FALSE)
+write.csv(results, 'results1.csv', row.names=FALSE)
