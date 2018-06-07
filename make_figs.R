@@ -129,7 +129,7 @@ kernel_func = function (ts_full, main){
         1, 1), lwd=2, col=c("gray80", "gray60", "gray40"))
 }
 # ts=predictions[,c('date','GPP','ER','GPP.lower','GPP.upper','ER.lower',
-    # 'ER.upper')]; date_var='date'; gpp_var='GPP'
+# 'ER.upper')]; date_var='date'; gpp_var='GPP'
 # er_var='ER'; main='PR_Icacos'
 diag_plots = function (ts, main){
     ts_full = processing_func(ts)
@@ -201,7 +201,7 @@ site_code = "NC_Eno"; start_date = "2017-01-01"; end_date = "2017-10-20"#2016-07
 # site_code = "NC_Stony"; start_date = "2016-12-01"; end_date = "2017-06-01" #2016-06-30; 2017-08-09
 # site_code = "NC_NHC"; start_date = "2017-01-01"; end_date = "2018-01-01" #2016-09-14; 2018-01-25
 # site_code = "NC_UNHC"; start_date = "2017-01-01"; end_date = "2017-12-11" #2016-07-12
-# site_code = 'WI_BEC'; start_date = '2017-01-26'; end_date = '2018-01-25' #2009-10-02; 2018-01-25
+site_code = 'WI_BEC'; start_date = '2017-01-26'; end_date = '2017-12-01' #2009-10-02; 2018-01-25
 # site_code = 'WI_BRW'; start_date = '2017-01-27'; end_date = '2018-01-26' #2014-06-13; 2018-01-26
 site_code = 'FL_WS1500'; start_date = '2016-08-01'; end_date = '2016-08-31' #2014-06-13; 2018-01-26
 site_code = 'FL_WS1500'; start_date = '2016-09-01'; end_date = '2016-10-26' #2014-06-13; 2018-01-26
@@ -351,7 +351,7 @@ predictions = predict_metabolism(modelfit)
 saveRDS(predictions, paste('~/Desktop/untracked/sm_out/predictions',
     site_code, start_date, end_date,
     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
-# predictions = readRDS('~/Desktop/untracked/region_zips/PR_streamMetabolizer_output/predictions/predictions_PR_Icacos_2016-10-01_2016-12-01_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds')
+# predictions = readRDS('~/Desktop/untracked/predictions_WI_BEC_2017-01-26_2018-01-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds')
 
 # predictions = readRDS(paste0('~/Desktop/untracked/streampulse_model_runs_',
 #     'round1/mod_objects/predictions_',
@@ -429,3 +429,72 @@ for(i in f){
         main=site_code)
     dev.off()
 }
+
+
+#ER v k and Q v k
+
+# predictions = readRDS('~/Desktop/untracked/predictions_WI_BEC_2017-01-26_2018-01-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds')
+fit = readRDS('~/Desktop/untracked/fit_WI_BEC_2017-01-26_2018-01-25_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds')
+
+# pdf(width=6, height=3,
+#     file='~/Dropbox/streampulse/figs/WI_BEC_diag1.pdf', compress=FALSE)
+png(width=6, height=3, units='in', type='cairo', res=300,
+    filename='~/Dropbox/streampulse/figs/WI_BEC_diag1.png')
+
+par(mfrow=c(1,2))
+mod = lm(fit@fit$daily$ER_mean ~ fit@fit$daily$K600_daily_mean)
+# bquote('Adj. ', R^2, ':')
+R2 = sprintf('%1.2f', summary(mod)$adj.r.squared)
+plot(fit@fit$daily$K600_daily_mean, fit@fit$daily$ER_mean, col='darkgreen',
+    ylab='Daily mean ER', xlab='Daily mean K600', bty='l', font.lab=2,
+    cex.axis=0.8, las=1)
+mtext(bquote('Adj.' ~ R^2 * ':' ~ .(R2)), side=3, line=0, adj=1, cex=0.8,
+    col='gray50')
+abline(mod, lty=2, col='gray50', lwd=2)
+plot(fit@fit$daily$K600_daily_mean, fit@data_daily$discharge.daily,
+    col='purple4', ylab='Daily mean Q', xlab='Daily mean K600', bty='l',
+    font.lab=2, cex.axis=0.8, las=1)
+
+dev.off()
+
+
+# obs v pred DO
+
+# #fancy date axis (meh)
+# dt = fit@data$date[1:1000]
+# # yrs = substr(dt, 1, 4)
+# # mts = substr(dt, 6, 7)
+# days = substr(dt, 9, 10)
+# yrs_ind = match(unique(yrs), yrs)
+# mts_ind = match(unique(mts), mts)
+# days_ind = match(unique(days), days)
+#
+# plot.ts(fit@data$DO.obs, xlim=c(1,1000), xaxt='n', las=1, ylab='DO (mg/L)')
+# lines(fit@data$DO.mod, xlim=c(1,1000), col='red')
+# axis(1, yrs_ind, yrs[yrs_ind], tck=-0.08, lwd=2, cex.axis=0.8, padj=.6)
+# axis(1, mts_ind, mts[mts_ind]) #not completed
+# axis(1, days_ind[-1], days[days_ind[-1]], cex.axis=0.7, padj=-1.7, tck=-0.05)
+
+
+
+#DOY axis
+
+# pdf(width=6, height=3,
+#     file='~/Dropbox/streampulse/figs/WI_BEC_diag2.pdf', compress=FALSE)
+png(width=6, height=3, units='in', type='cairo', res=300,
+    filename='~/Dropbox/streampulse/figs/WI_BEC_diag2.png')
+
+st = 4800; en = 5800
+dt = as.Date(fit@data$date[st:en])
+DOY = gsub('^0+', '', strftime(dt, format="%j"))
+DOY_ind = match(unique(DOY)[seq(1, length(unique(DOY)), 2)], DOY)
+plot.ts(fit@data$DO.obs, xlim=c(st,en), xaxt='n', las=1, xlab='', ylab='',
+    ylim=c(8,14), lwd=3, col='gray70', bty='l')
+mtext('DOY', 1, font=2, line=2.5)
+mtext('DO (mg/L)', 2, font=2, line=2.5)
+lines(fit@data$DO.mod, xlim=c(st,en), col='darkred')
+axis(1, DOY_ind[-1] + st - 1, DOY[DOY_ind[-1]])
+legend(x=5450, y=15.8, xpd=TRUE, legend=c('Obs', 'Pred'), cex=0.8,
+    col=c('gray70', 'darkred'), lty=1, bty='n', horiz=TRUE, lwd=c(3,1))
+
+dev.off()
