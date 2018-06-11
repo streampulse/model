@@ -16,8 +16,8 @@ library(RColorBrewer)
 
 #expects sm_figs and sm_out directories at this location
 # setwd('C:/Users/vlahm/Desktop/untracked')
-setwd('D:/untracked')
-# setwd('~/Desktop/untracked')
+# setwd('D:/untracked')
+setwd('~/Desktop/untracked')
 
 #metaboplots funcs
 processing_func = function (ts) {
@@ -194,10 +194,15 @@ md_gfvn
 pr_qs
 dim(site_deets)
 site_deets = site_deets[29:57,]
+site_deets = site_deets[49:53,]#NC minus Eno
+site_deets = site_deets[1,]
 
 # run ####
 results = matrix('', ncol=5, nrow=nrow(site_deets))
 colnames(results) = c('Region', 'Site', 'Result', 'Kmax', 'K_ER_cor')
+
+zq = read.csv('~/Dropbox/streampulse/data/rating_curves/ZQ_data.csv')
+offsets = read.csv('~/Dropbox/streampulse/data/rating_curves/sensor_offsets.csv')
 
 for(i in 1:nrow(site_deets)){
 
@@ -218,9 +223,17 @@ for(i in 1:nrow(site_deets)){
         next
     }
 
+    #get rating curve data if needed (comment if not)
+    site = strsplit(site_code, '_')[[1]][2]
+    Z = zq[zq$site == site, 'level_m']
+    Q = zq[zq$site == site, 'discharge_cms']
+    offset = offsets[offsets$site == site, 2] / 100
+
     #prep
-    fitdata = try(prep_metabolism(d=streampulse_data,type='bayes',
-        model='streamMetabolizer'))
+    fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
+        model='streamMetabolizer',
+        zq_curve=list(sensor_height=offset, Z=Z, Q=Q, fit='power',
+            ignore_oob_Z=TRUE, plot=TRUE)))
 
     if(class(fitdata) == 'try-error'){
         results[i,3] = 'prep error'
