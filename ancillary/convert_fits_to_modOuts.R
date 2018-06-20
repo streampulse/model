@@ -2,6 +2,7 @@ library(streamMetabolizer)
 library(StreamPULSE)
 
 setwd('~/Desktop/untracked/single_year_fits/')
+setwd('~/Desktop/untracked/sm_out/temp/')
 fits = list.files(pattern='fit_')
 for(f in fits){
     print(f)

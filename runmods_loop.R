@@ -195,6 +195,11 @@ pr_qs
 dim(site_deets)
 site_deets = site_deets[29:57,]
 site_deets = site_deets[49:53,]#NC minus Eno
+site_deets = site_deets[48:54,]#NC minus Eno
+a = readRDS('~/git/streampulse/server_copy/sp/shiny/data/modOut_NC_Eno_2017-01-01_2017-12-31_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds')
+b = readRDS('~/git/streampulse/server_copy/sp/shiny/data/predictions_NC_Eno_2017-01-01_2017-12-31_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds')
+a$data_daily$date[1]
+a$data_daily$date[length(a$data_daily$date)]
 site_deets = site_deets[1,]
 
 # run ####
