@@ -3,4 +3,4 @@ setwd('~/git/streampulse/model/StreamPULSE/R/')
 fs = list.files()
 for(i in fs) source(i)
 
-#now go to hax/R/package_write.R
+#now go to hax/R/package_write.R if necessary

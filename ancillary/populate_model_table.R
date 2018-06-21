@@ -20,6 +20,9 @@ for(i in 1:length(mods)){
     preds = readRDS(paste0('predictions_', spec_str, '.rds'))
     mod_out = readRDS(mods[i])
 
+    modyear = ifelse(substr(spec_vec[3],1,4) == substr(spec_vec[4],1,4),
+        substr(spec_vec[3],1,4), 0)
+
     rmse = sqrt(mean((mod_out$data$DO.mod - mod_out$data$DO.obs)^2, na.rm=TRUE))
 
     gpp_upperCI = abs(preds$GPP.upper - preds$GPP)
@@ -41,7 +44,8 @@ for(i in 1:length(mods)){
 
     model_deets = rbind(model_deets, data.frame(region=spec_vec[1],
         site=spec_vec[2], start_date=spec_vec[3], end_date=spec_vec[4],
-        run_finished=time_now, method=spec_vec[5], engine=spec_vec[10],
+        year=modyear, run_finished=time_now, method=spec_vec[5],
+        engine=spec_vec[10],
         pool=spec_vec[6], proc_err=TRUE, obs_err=TRUE, proc_acor=FALSE,
         ode_method=spec_vec[8], deficit_src=spec_vec[9], interv='15 min',
         fillgaps='interpolation', estimate_areal_depth=TRUE, O2_GOF=rmse,
@@ -49,6 +53,6 @@ for(i in 1:length(mods)){
         prop_neg_GPP=prop_neg_gpp, ER_K600_cor=pearson, coverage=coverage))
 }
 
-
-
 dbWriteTable(con, 'model', model_deets, append=TRUE)
+
+dbDisconnect(con)
