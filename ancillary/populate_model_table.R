@@ -42,10 +42,15 @@ for(i in 1:length(mods)){
     coverage = as.numeric(as.Date(preds$date[nrow(preds)]) -
             as.Date(preds$date[1]))
 
+    rc = ifelse(spec_vec[1] == 'NC' && spec_vec[2] != 'Eno', TRUE, FALSE)
+
     model_deets = rbind(model_deets, data.frame(region=spec_vec[1],
-        site=spec_vec[2], start_date=spec_vec[3], end_date=spec_vec[4],
-        year=modyear, run_finished=time_now, method=spec_vec[5],
-        engine=spec_vec[10],
+        site=spec_vec[2], start_date=as.Date(preds$date[1]),
+        end_date=as.Date(preds$date[nrow(preds)]),
+        requested_variables='all',
+        year=modyear, run_finished=time_now, model='streamMetabolizer',
+        method=spec_vec[5], engine=spec_vec[10],
+        rm_flagged="Bad Data,Questionable", used_rating_curve=rc,
         pool=spec_vec[6], proc_err=TRUE, obs_err=TRUE, proc_acor=FALSE,
         ode_method=spec_vec[8], deficit_src=spec_vec[9], interv='15 min',
         fillgaps='interpolation', estimate_areal_depth=TRUE, O2_GOF=rmse,
