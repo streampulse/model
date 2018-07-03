@@ -20,8 +20,9 @@ for(i in 1:length(mods)){
     preds = readRDS(paste0('predictions_', spec_str, '.rds'))
     mod_out = readRDS(mods[i])
 
-    modyear = ifelse(substr(spec_vec[3],1,4) == substr(spec_vec[4],1,4),
-        substr(spec_vec[3],1,4), 0)
+    modyear = spec_vec[3]
+    # modyear = ifelse(substr(spec_vec[3],1,4) == substr(spec_vec[4],1,4),
+    #     substr(spec_vec[3],1,4), 0)
 
     rmse = sqrt(mean((mod_out$data$DO.mod - mod_out$data$DO.obs)^2, na.rm=TRUE))
 
@@ -44,18 +45,21 @@ for(i in 1:length(mods)){
 
     rc = ifelse(spec_vec[1] == 'NC' && spec_vec[2] != 'Eno', TRUE, FALSE)
 
+    kmax = max(mod_out$fit$daily$K600_daily_mean, na.rm=TRUE)
+
     model_deets = rbind(model_deets, data.frame(region=spec_vec[1],
         site=spec_vec[2], start_date=as.Date(preds$date[1]),
         end_date=as.Date(preds$date[nrow(preds)]),
         requested_variables='all',
         year=modyear, run_finished=time_now, model='streamMetabolizer',
-        method=spec_vec[5], engine=spec_vec[10],
+        method='bayes', engine='stan',
         rm_flagged="Bad Data,Questionable", used_rating_curve=rc,
-        pool=spec_vec[6], proc_err=TRUE, obs_err=TRUE, proc_acor=FALSE,
-        ode_method=spec_vec[8], deficit_src=spec_vec[9], interv='15 min',
+        pool='binned', proc_err=TRUE, obs_err=TRUE, proc_acor=FALSE,
+        ode_method='trapezoid', deficit_src='DO-mod', interv='15 min',
         fillgaps='interpolation', estimate_areal_depth=TRUE, O2_GOF=rmse,
         GPP_95CI=gpp_95ci, ER_95CI=er_95ci, prop_pos_ER=prop_pos_er,
-        prop_neg_GPP=prop_neg_gpp, ER_K600_cor=pearson, coverage=coverage))
+        prop_neg_GPP=prop_neg_gpp, ER_K600_cor=pearson, coverage=coverage,
+        kmax=kmax))
 }
 
 dbWriteTable(con, 'model', model_deets, append=TRUE)

@@ -8,7 +8,6 @@ library(geoknife)
 library(readr)
 library(geosphere)
 library(streamMetabolizer)
-library(scales)
 
 detach('package:StreamPULSE', unload=TRUE)
 setwd('~/git/streampulse/model/StreamPULSE/R/')
@@ -26,4 +25,12 @@ y = prep_metabolism(x)
 y$specs
 
 o = fit_metabolism(y)
-3
+
+# saveRDS(fff, '~/Desktop/test_fit.rds')
+# saveRDS(ppp, '~/Desktop/test_pred.rds')
+
+
+model_fit = readRDS('~/Desktop/test_fit.rds')
+predictions = readRDS('~/Desktop/test_pred.rds')
+d = y
+output = list(predictions=predictions, fit=model_fit)
