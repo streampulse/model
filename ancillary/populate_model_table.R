@@ -59,7 +59,7 @@ for(i in 1:length(mods)){
         fillgaps='interpolation', estimate_areal_depth=TRUE, O2_GOF=rmse,
         GPP_95CI=gpp_95ci, ER_95CI=er_95ci, prop_pos_ER=prop_pos_er,
         prop_neg_GPP=prop_neg_gpp, ER_K600_cor=pearson, coverage=coverage,
-        kmax=kmax))
+        kmax=kmax, current_best=TRUE))
 }
 
 dbWriteTable(con, 'model', model_deets, append=TRUE)
