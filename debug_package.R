@@ -39,3 +39,9 @@ mod_startyr = '2017'
 d = y
 output = list(predictions=predictions, fit=model_fit)
 deets = extract_model_details(model_fit, predictions, d$specs)
+
+output = modelfit
+predictions = modelfit$predictions
+model_fit = modelfit$fit
+d = fitdata
+deets = StreamPULSE:::extract_model_details(model_fit, predictions, d$specs)
