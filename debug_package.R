@@ -20,16 +20,19 @@ library(streamMetabolizer)
 
 
 #testing model comparison and API upload infrastructure ####
-x = request_data('NC_Eno', '2017-01-19', '2017-02-05',
+x = request_data('NC_Eno', '2017-01-26', '2017-02-05',
     token='901bb597c597e3237d00')
+x = request_data('AZ_OC', '2017-01-01', '2017-12-31')
 
 x$specs
 
-y = prep_metabolism(x)
+y = prep_metabolism(x, maxhours=3)
+fitdata = y
 y$specs
 
 o = fit_metabolism(y)
 
+# saveRDS(o, '~/Desktop/test_out.rds')
 # saveRDS(fff, '~/Desktop/test_fit.rds')
 # saveRDS(ppp, '~/Desktop/test_pred.rds')
 

@@ -188,7 +188,7 @@ site_code = "RI_CorkBrk"; start_date = "2016-01-01"; end_date = '2016-12-31'#ed 
 site_code = "MD_BARN"; start_date = "2016-02-19"; end_date = '2016-11-19'
 #site_code = "VT_SLPR"; start_date = "2015-06-03"; end_date = '2016-06-03' #ed 2016-11-11
 # site_code = "AZ_LV"; start_date = "2017-08-07"; end_date = "2017-12-25" #sd 2017-07-07 but no o2
-#site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03" #sd 11-13
+site_code = "AZ_OC"; start_date = "2016-11-15"; end_date = "2017-12-03" #sd 11-13
 #site_code = "AZ_SC"; start_date = "2017-02-08"; end_date = "2017-03-28"
 # site_code = "AZ_WB"; start_date = "2017-08-04"; end_date = "2017-12-27"
 site_code = "NC_Eno"; start_date = "2017-01-01"; end_date = "2017-08-30" #2016-07-11;
@@ -213,6 +213,7 @@ flags=TRUE; token=NULL; variables=NULL
 # source('~/git/streampulse/model/sp_functions.R')
 # source('~/git/streampulse/model/gapfill_functions.R')
 
+site_code = "AZ_OC"; start_date = "2017-03-01"; end_date = "2017-04-30" #sd 11-13
 streampulse_data = request_data(sitecode=site_code,
     # startdate=start_date, enddate=end_date, variables=NULL,
     flags=TRUE)
@@ -292,14 +293,14 @@ fitdata = prep_metabolism(d=streampulse_data, type='bayes',
 # fitdata$DO.obs[(3798-191):(3897-186)] = 11
 
 
-plotvars = colnames(fitdata)[! colnames(fitdata) %in% c('solar.time')]
-pdf(width=5, height=9,
-    file=paste0('~/Desktop/untracked/sm_figs/input_',
-    site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
+plotvars = colnames(fitdata$data)[! colnames(fitdata$data) %in% c('solar.time')]
+# pdf(width=5, height=9,
+#     file=paste0('~/Desktop/untracked/sm_figs/input_',
+#     site_code, '_', start_date, '_', end_date, '.pdf'), compress=FALSE)
 par(mfrow=c(length(plotvars),1), mar=c(0,0,0,0), oma=c(4,4,.5,.5))
-t = as.Date(fitdata$solar.time)
+t = as.Date(fitdata$data$solar.time)
 for(i in plotvars){
-    plot(fitdata[,i], type='l', xlab='', xaxt='n', xaxs='i', las=2)
+    plot(fitdata$data[,i], type='l', xlab='', xaxt='n', xaxs='i', las=2)
     mtext(i, 2, 2.5)
     if(i == plotvars[length(plotvars)]){
         yearstarts = match(unique(substr(t,1,4)), substr(t,1,4))
@@ -308,7 +309,7 @@ for(i in plotvars){
         axis(1, monthstarts, substr(t[monthstarts],6,7))
     }
 }
-dev.off()
+# dev.off()
 
 # source('~/git/streampulse/model/sp_functions.R')
 modelfit = fit_metabolism(fitdata)
@@ -347,6 +348,14 @@ daily_er[is.na(daily_er)] = mean(daily_er, na.rm=TRUE)
 cor(daily_k, daily_er)
 
 predictions = predict_metabolism(modelfit)
+predictions = readRDS('~/git/streampulse/server_copy/sp/shiny/data/predictions_GG_YOYO_2016.rds')
+fit = readRDS('~/git/streampulse/server_copy/sp/shiny/data/modOut_GG_YOYO_2016.rds')
+data_daily = fit@data_daily
+data = fit@data
+fit = fit@fit
+mod_out = list('data_daily'=data_daily, 'data'=data, 'fit'=fit)
+saveRDS(predictions, '~/git/streampulse/server_copy/sp/shiny/data/predictions_GG_YOYO_2016.rds')
+saveRDS(mod_out, '~/git/streampulse/server_copy/sp/shiny/data/modOut_GG_YOYO_2016.rds')
 
 saveRDS(predictions, paste('~/Desktop/untracked/sm_out/predictions',
     site_code, start_date, end_date,
@@ -398,9 +407,9 @@ pdf(width=7, height=7,
 diag_plots(predictions[,c('date','GPP','ER')], 'PR_Icacos')
 dev.off()
 
-# average_plot(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
-# cumulative_plots(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
-# kernel_plot(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
+average_plot(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
+cumulative_func(predictions[,c('date','GPP','ER')])
+kernel_plot(predictions[,c('date','GPP','ER')], 'date', 'GPP', 'ER')
 
 #replot all ####
 fdir = '~/Desktop/untracked/streampulse_model_runs_round1/mod_objects/'
