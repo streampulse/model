@@ -2,7 +2,8 @@
 
 rm(list=ls()); cat('\014')
 # install.packages('devtools')
-# install_github('streampulse/StreamPULSE', ref='dev', dependencies=TRUE)
+# library(devtools)
+# install_github('streampulse/StreamPULSE', ref='master', dependencies=TRUE)
 # install.packages('streamMetabolizer', dependencies=TRUE,
 #                  repos=c('https://owi.usgs.gov/R','https://cran.rstudio.com'))
 # install.packages('ks')
@@ -10,12 +11,12 @@ rm(list=ls()); cat('\014')
 
 library(StreamPULSE)
 library(streamMetabolizer)
-library(ks)
-library(RColorBrewer)
+# library(ks)
+# library(RColorBrewer)
 
 #expects sm_figs and sm_out directories at this location
 # setwd('C:/Users/vlahm/Desktop/untracked')
-setwd('D:/untracked')
+setwd('K:/untracked')
 # setwd('~/Desktop/untracked')
 
 # choose sites and dates ####
@@ -35,14 +36,10 @@ site_deets$int[(site_deets$site_code == 'FL_NR1000' &
                   site_deets$start_date == '2016-01-01')] = '60 min'
 
 # site_deets = site_deets[substr(site_deets$site_code, 1, 2) != 'SE',]
+site_deets$skip[15:nrow(site_deets)] = ''
 site_deets = site_deets[site_deets$skip != 'x',]
-site_deets = site_deets[site_deets$site_code == 'PR_QS',]
-site_deets = site_deets[1:28,]
-site_deets = site_deets[29:57,]
-site_deets = site_deets[49:53,]#NC minus Eno
-site_deets = site_deets[1,]
-# site_deets = site_deets[substr(site_deets$site_code,1,2) == 'RI' | (site_deets$site_code == 'FL_NR1000' &
-#                                                                       site_deets$start_date == '2016-01-01'),]
+site_deets = site_deets[1:31,]
+site_deets = site_deets[32:62,]
 
 # run ####
 results = matrix('', ncol=4, nrow=nrow(site_deets))
@@ -156,4 +153,4 @@ for(i in 1:nrow(site_deets)){
 
 }
 
-write.csv(results, 'results4.csv', row.names=FALSE)
+write.csv(results, 'results1.csv', row.names=FALSE)
