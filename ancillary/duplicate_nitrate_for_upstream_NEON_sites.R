@@ -1,5 +1,6 @@
 library(RMariaDB)
 library(DBI)
+library(stringr)
 
 # setwd('/home/mike/git/streampulse/server_copy/sp/scheduled_scripts/')
 setwd('/home/aaron/sp/scheduled_scripts/')
