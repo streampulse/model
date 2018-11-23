@@ -32,6 +32,19 @@ zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=NULL, b=NULL,
     fit='power', ignore_oob_Z=TRUE, plot=TRUE)
 estimate_areal_depth=FALSE
 
+#debug query_available_results####
+region='all'; site=NULL; year=NULL
+region='CT'; site=NULL; year=NULL
+region='CT'; site='BUNN'; year=NULL
+region='NC'; year=2017; site=NULL
+year=2017; region=NULL; site=NULL
+query_available_results('NC', 'Eno', '2017')
+query_available_results('NC', 'Eno')
+query_available_results('FL')
+query_available_results('all')
+query_available_results('NC', NULL, 2017)
+query_available_results(NULL, NULL, 2017)
+
 #debug query_available_data####
 region='all'; site=NULL
 region='CT'; site=NULL
@@ -53,9 +66,16 @@ query_available_data(NULL, NULL, '2017-04-07', '2017-04-10', NULL)
 query_available_data('all', 'LV', '2017-04-07', '2017-04-10', NULL)
 query_available_data(NULL, NULL, '2017-04-08', '2017-04-09', 'DO_mgL')
 
+#debug request_results ####
+sitecode = 'NC_Eno'
+year = '2017'
+z = request_results('NC_Eno', '201e')
+z = request_results('NC_Eno', '2017')
+z = request_results('KS_KANSASR', '2018')
+z$data_daily$date[1]
+
 #testing model comparison and API upload infrastructure ####
-x = request_data('NC_Eno', '2017-01-26', '2017-02-05',
-    token='901bb597c597e3237d00')
+x = request_data('NC_Eno', '2017-01-26', '2017-02-05')
 x = request_data('AZ_OC', '2017-01-01', '2017-12-31')
 
 x$specs
