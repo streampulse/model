@@ -8,6 +8,8 @@ library(geoknife)
 library(readr)
 library(geosphere)
 library(streamMetabolizer)
+library(shiny)
+library(ks)
 
 detach('package:StreamPULSE', unload=TRUE)
 setwd('~/git/streampulse/model/StreamPULSE/R/')
@@ -73,6 +75,10 @@ z = request_results('NC_Eno', '201e')
 z = request_results('NC_Eno', '2017')
 z = request_results('KS_KANSASR', '2018')
 z$data_daily$date[1]
+
+#debug plot_output ####
+x = readRDS('~/Desktop/test_modelfit.rds')
+plot_output(x)
 
 #testing model comparison and API upload infrastructure ####
 x = request_data('NC_Eno', '2017-01-26', '2017-02-05')
