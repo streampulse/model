@@ -2,6 +2,8 @@ library(RMariaDB)
 library(DBI)
 library(stringr)
 library(dplyr)
+library(openxlsx)
+library(tidyr)
 
 #connect to MySQL
 # setwd('/home/aaron/sp/scheduled_scripts/')
@@ -18,37 +20,103 @@ pw = extract_from_config('MYSQL_PW')
 con = dbConnect(RMariaDB::MariaDB(), dbname='sp',
     username='root', password=pw)
 
-#setup
+#read in and format daily discharge data; this will be converted to per second
 setwd('/home/mike/Dropbox/streampulse/data/australia_data/')
 
-# sitenm_dict = list('Edward'='EW', 'Goulbu'='Goulburn',
-#     'Lachla'='Lachlan')
+Qnames = names(read.xlsx('daily_q_2014-17_LTIMsites.xlsx', 'Sheet1', rows=4))
+Q = read.xlsx('daily_q_2014-17_LTIMsites.xlsx', 'Sheet1', startRow=5,
+    detectDates=TRUE)
+colnames(Q) = Qnames
+Qdates = Q$LTIM.Site.Name
+
+#this maps sites from series filenames to sites in discharge file
+namemap = c('Hopwood'="Hopwood,.Windra Vale",
+    'Windra Vale'="Hopwood,.Windra.Vale",'Widgee, Wakool River1'='Widgee',
+    'Tralee1'='Tralee,.Cummins,.Llanos.Park',
+    'Cummins'='Tralee,.Cummins,.Llanos.Park',
+    'Llanos Park2'='Tralee,.Cummins,.Llanos.Park',
+    'Barham Bridge'='Barham.Bridge',
+    'Noorong2'='Noorong','Moss Road'="Moss.Rd/Day's.Rd",
+    'McCoys Bridge'='McCoys','Loch Garry Gauge'='McCoys',
+    "Darcy's Track"="Darcy's.Track",'WAL'='(Walbundry)',
+    'LB'="Lane's.Bridge,.Cowl.Cowl",
+    'WB'='Whealbah','CC'="Lane's.Bridge,.Cowl.Cowl")
 
 dirs = list.dirs(recursive=FALSE)
-d=dirs[1]; f=files[1]
+# d=dirs[1]; f=files[4]
 for(d in dirs){
+
     files = list.files(d)
     for(f in files){
+
+        print(f)
+        cur_time = Sys.time()
+        attr(cur_time, 'tzone') = 'UTC'
+
+        #add site to site table in db
+        site_deets = stringr::str_match(f, '(.+)_(\\d+)_(.+)_(\\d+).csv')
+        site_up_df = data.frame('region'='AU',
+            'site'=paste0(site_deets[4], site_deets[3]),
+            # 'site'=sitenm_dict[substr(f, 1, 6)][[1]],
+            'name'=paste0(site_deets[2], ': ', site_deets[4], ' ', site_deets[3]),
+            'latitude'=NA,
+            'longitude'=NA,
+            'usgs'=NA, 'addDate'=cur_time,
+            'embargo'=0, 'by'=35,
+            'contact'='Michael Grace', 'contactEmail'='michael.grace@monash.edu')
+
+        # dbWriteTable(con, 'site', site_up_df, append=TRUE)
+
+        #read in series data; deal with 3 possible date formats
         data = read.csv(paste0(d, '/', f), stringsAsFactors=FALSE)
         data$DateTime_UTC = as.POSIXct(paste(data$Date, data$Time),
             format='%d/%m/%Y %H:%M:%S', tz='UTC')
-        data = data %>% select(-Date, -Time, -salinity) %>%
-            select(DateTime_UTC, everything())
 
-        cur_time = Sys.time()
-        attr(cur_time, 'tzone') = 'UTC'
-        site_deets = stringr::str_match(f, '(.+)_(\\d+)_(.+)_(\\d+).csv')
-        sql_up_df = data.frame('region'='AU',
-            'site'=paste0(site_deets[4], site_deets[3]),
-            # 'site'=sitenm_dict[substr(f, 1, 6)][[1]],
-            'name'=paste0(site_deets[2], ': ', site_deets[4], ' ', site_deets[3])
-            'latitude'=,
-            'longitude'=,
-            'usgs'=NA, 'addDate'=cur_time,
-            'embargo'=0, 'by'=35,
-            'contact'=, 'contactEmail'=)
+        if(is.na(data$DateTime_UTC[1])){
+            data = read.csv(paste0(d, '/', f), stringsAsFactors=FALSE)
+            data$DateTime_UTC = as.POSIXct(paste(data$Date, data$Time),
+                format='%Y-%m-%dT %H:%M:%S', tz='UTC')
+        }
+        if(difftime(data$DateTime_UTC[1], data$DateTime_UTC[2]) != -10){
+            data = read.csv(paste0(d, '/', f), stringsAsFactors=FALSE)
+            data$Date = as.Date(data$Date)
+            data$DateTime_UTC = as.POSIXct(paste(data$Date, data$Time),
+                format='%Y-%m-%d %H:%M:%S', tz='UTC')
+        }
 
-        dbWriteTable(con, 'data', na_filt, append=TRUE)
+        #conversions, adjustments, cleanup of series data
+        data = mutate(data, 'AirPres_kPa'=atmo.pressure * 101.325) %>%
+            select(-Date, -Time, -salinity, -atmo.pressure) %>%
+            select(DateTime_UTC, 'Light_PAR'=I, 'WaterTemp_C'=tempC,
+                'DO_mgL'=DO.meas, everything())
+        data = data[! duplicated(data$DateTime_UTC),]
+
+        #spread out daily discharge data so it covers all time points
+        curcol = which(Qnames == namemap[site_deets[4]])
+        ML_m3s_conv_fac = 1e6 / (1000 * 86400)
+        discharge = Q[, curcol] * ML_m3s_conv_fac
+        data$date = as.Date(data$DateTime_UTC)
+        dateMatchInds = match(data$date, Qdates, nomatch=NA)
+        data$Discharge_m3s = discharge[dateMatchInds]
+        data = select(data, -date)
+
+        #STILL GOTTA HANDLE TZ CONVERSION FROM LOCAL
+
+        #convert to long format and insert into db
+        data = gather(data, 'Variable', 'Value', Light_PAR:Discharge_m3s)
+        # dbWriteTable(con, 'data', na_filt, append=TRUE)
+
+        # OI!!! update site table with firstrecord, vars, etc
+
+
+        # x = rle(as.numeric(data$DateTime_UTC))
+        # if(! all(x$lengths == 1)){
+        #     stop('not all same')
+        # }
+        # if(difftime(data$DateTime_UTC[1], data$DateTime_UTC[2]) != -10){
+        #     stop('not 10')
+        # }
+
     }
 }
 
