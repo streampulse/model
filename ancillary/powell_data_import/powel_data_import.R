@@ -6,6 +6,7 @@ library(RMariaDB)
 library(rvest)
 library(xml2)
 library(dplyr)
+library(tidyr)
 
 setwd('/home/mike/git/streampulse/model/ancillary/powell_data_import')
 cur_time = Sys.time()
@@ -31,12 +32,15 @@ data_products = item_list_children('59bff507e4b091459a5e0982',
 pw = extract_from_config('MYSQL_PW')
 con = dbConnect(RMariaDB::MariaDB(), dbname='sp', username='root', password=pw)
 
+#site data ####
+dir.create('site_data')
+
 #download and extract site data
 site_obj = item_get('59bff64be4b091459a5e098b')
-site_files = item_file_download(site_obj, dest_dir='.')
+site_files = item_file_download(site_obj, dest_dir='site_data')
 tsv = which(grepl('.tsv', site_files))
-site_data = read.table(site_files[tsv], header=TRUE, sep='\t',
-    stringsAsFactors=FALSE, quote='')
+site_data = read.table(paste0('site_data/', site_files[tsv]), header=TRUE,
+    sep='\t', stringsAsFactors=FALSE, quote='')
 
 #remove superfluous double quotes
 char_cols = lapply(site_data, class) == 'character'
@@ -99,8 +103,38 @@ site_data_db = data.frame('region'=site_data$region,
     'usgs'=site_data$X.nwis_id., 'addDate'=rep(cur_time, nsites),
     'embargo'=rep(0, nsites), 'by'=rep(-902, nsites),
     'contact'=rep('https://doi.org/10.5066/F70864KX', nsites),
-    'contactEmail'=rep(NA, nsites))
+    'contactEmail'=rep(NA, nsites),
+    stringsAsFactors=FALSE)
 
 dbWriteTable(con, 'site', site_data_db, append=TRUE)
 
+#model inputs ####
+dir.create('modIn_data')
 
+#download and extract model input data per site
+modIn_children = item_list_children('59eb9b9de4b0026a55ffe37c',
+    fields='id', limit=99999)
+modIn_ids = sapply(modIn_children, function(x) x$id)
+
+for(i in 1:length(modIn_ids)){
+
+    #download zip, extract, read into R, convert to long format
+    modIn_obj = item_get(modIn_ids[i])
+    modIn_zip = item_file_download(modIn_obj, dest_dir='modIn_data')
+    unzipped = unzip(zipfile=paste0(modIn_zip), exdir=paste0('modIn_data'))
+    modIn_data = read.table(unzipped, header=TRUE,
+        sep='\t', stringsAsFactors=FALSE, quote='')
+    modIn_data = gather(modIn_data, 'variable', 'value', -'solar.time')
+
+    #get site data from above and populate rest of db data table
+    sitename = str_match(modIn_zip, 'modIn_data/(nwis_[0-9]+)_.*')[,2]
+    site_deets = site_data_db[site_data_db$site == sitename,]
+
+    modIn_data$region = site_deets$region
+    modIn_data$site = site_deets$site
+    modIn_data$flag = NA
+    modIn_data$upload_id = -902
+    colnames(modIn_data)[colnames(modIn_data) == 'solar.time'] = 'DateTime_UTC'
+
+    dbWriteTable(con, 'data', modIn_data, append=TRUE)
+}

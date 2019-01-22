@@ -2,3 +2,6 @@
 /StreamPULSE
 .Rhistory
 /obsolete
+*.tsv
+*.zip
+*.xml
