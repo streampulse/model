@@ -3,10 +3,11 @@ library(sbtools)
 library(sourcetools)
 library(stringr)
 library(RMariaDB)
-library(rvest)
 library(xml2)
+library(rvest)
 library(dplyr)
 library(tidyr)
+library(streamMetabolizer)
 
 setwd('/home/mike/git/streampulse/model/ancillary/powell_data_import')
 cur_time = Sys.time()
@@ -39,7 +40,7 @@ dir.create('site_data')
 site_obj = item_get('59bff64be4b091459a5e098b')
 site_files = item_file_download(site_obj, dest_dir='site_data')
 tsv = which(grepl('.tsv', site_files))
-site_data = read.table(paste0('site_data/', site_files[tsv]), header=TRUE,
+site_data = read.table(site_files[tsv], header=TRUE,
     sep='\t', stringsAsFactors=FALSE, quote='')
 
 #remove superfluous double quotes
@@ -50,8 +51,8 @@ site_data[char_cols] = apply(site_data[,char_cols], 2, str_replace_all,
 #scrape table of state names and abbreviations; turn into mappings df
 u = 'http://www.printabledirect.com/list-of-all-50-states-abbreviations-chart.htm'
 u_html = read_html(u)
+# write_html(u_html, '~/Desktop/hax/utilities/state_abbrevs.html')
 
-html_node("Verdana, Arial, Helvetica, sans-serif") %>%
 elements = html_nodes(u_html, xpath="//tr//font[not(strong)]") %>%
     html_text(trim=TRUE)
 elements = elements[elements != '']
@@ -73,18 +74,20 @@ site_data$region[which(fullname_inds)] =
 still_missing = is.na(site_data$region)
 missing_state_latlon = site_data[still_missing, c('X.lat.', 'X.lon.')]
 
-#get the rest from AskGeo, via lat and long
-api_key = extract_from_config('ASKGEO_KEY')
-accnt_id = '2023'
-latlongs = paste(paste(missing_state_latlon$X.lat., missing_state_latlon$X.lon.,
-    sep='%2C'), collapse='%3B')
-askGeoReq = paste0('https://api.askgeo.com/v1/', accnt_id, '/',
-    api_key, '/query.json?databases=UsState2010&points=', latlongs)
+#get the rest from AskGeo, via lat and long (commented to avoid accidental query)
+# api_key = extract_from_config('ASKGEO_KEY')
+# accnt_id = '2023'
+# latlongs = paste(paste(missing_state_latlon$X.lat., missing_state_latlon$X.lon.,
+#     sep='%2C'), collapse='%3B')
+# askGeoReq = paste0('https://api.askgeo.com/v1/', accnt_id, '/',
+#     api_key, '/query.json?databases=UsState2010&points=', latlongs)
+#
+# r = httr::GET(askGeoReq)
+# json = httr::content(r, as="text", encoding="UTF-8")
+# askGeoResp = jsonlite::fromJSON(json)
 
-r = httr::GET(askGeoReq)
-json = httr::content(r, as="text", encoding="UTF-8")
-askGeoResp = jsonlite::fromJSON(json)
-# saveRDS(askGeoResp, '~/Desktop/askGeoResp.rds')
+#load saved askgeo results
+askGeoResp = readRDS('~/Desktop/askGeoResp.rds')
 
 state_lookups = toupper(askGeoResp$data$UsState2010$CensusAreaName)
 state_lookups = str_remove_all(state_lookups, '\\s')
@@ -134,7 +137,51 @@ for(i in 1:length(modIn_ids)){
     modIn_data$site = site_deets$site
     modIn_data$flag = NA
     modIn_data$upload_id = -902
+    modIn_data$DateTime_UTC = as.POSIXct(modIn_data$DateTime_UTC,
+        format='%Y-%m-%dT%H:%M:%SZ', tz='UTC')
+    modIn_data$DateTime_UTC = convert_solartime_to_UTC(modIn_data$DateTime_UTC,
+        site_deets$longitude, time.type='mean solar')
+
     colnames(modIn_data)[colnames(modIn_data) == 'solar.time'] = 'DateTime_UTC'
 
     dbWriteTable(con, 'data', modIn_data, append=TRUE)
 }
+
+#model outputs ####
+dir.create('modOut')
+
+#download and extract model input data per site
+modOut_children = item_list_children('59eb9ba6e4b0026a55ffe37f',
+    fields='id', limit=99999)
+modOut_ids = sapply(modOut_children, function(x) x$id)
+
+for(i in 1:length(modOut_ids)){
+
+    modOut_obj = item_get(modOut_ids[i])
+    modOut_zip = item_file_download(modOut_obj, dest_dir='modOut')
+    unzipped = unzip(zipfile=paste0(modOut_zip), exdir=paste0('modOut'))
+    items = str_match(unzipped, '^modOut/(.*).tsv$')[,2]
+    modOut = list()
+    invisible(lapply(items, function(x) {
+        modOut[[x]] <<- read.table(paste0('modOut/', x, '.tsv'), header=TRUE,
+            sep='\t', stringsAsFactors=FALSE, quote='')
+        # assign(x, read.table(paste0('modOut/', x, '.tsv'), header=TRUE,
+        #     sep='\t', stringsAsFactors=FALSE, quote=''), pos=.GlobalEnv)
+    }))
+    modOut = gather(modOut, 'variable', 'value', -'solar.time')
+
+    #get site data from above and populate rest of db data table
+    sitename = str_match(modOut_zip, 'modOut_data/(nwis_[0-9]+)_.*')[,2]
+    site_deets = site_data_db[site_data_db$site == sitename,]
+
+}
+az = readRDS('~/git/streampulse/server_copy/sp/shiny/data/modOut_AZ_LV_2018.rds')
+azp = readRDS('~/git/streampulse/server_copy/sp/shiny/data/predictions_AZ_LV_2018.rds')
+str(az$data_daily)
+str(az$data)
+str(az$fit$daily)
+
+str(modOut$daily)
+str(modOut$KQ_overall)
+str(modOut$overall)
+str(modOut$KQ_binned)
