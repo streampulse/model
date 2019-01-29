@@ -99,7 +99,7 @@ state_lookups_abb[is.na(state_lookups_abb)] = c('DC', 'PR', 'PR')
 
 site_data$region[still_missing] = state_lookups_abb
 
-#insert site data into db
+#prepare site data for db insertion (later)
 nsites = nrow(site_data)
 site_data_db = data.frame('region'=site_data$region,
     'site'=site_data$X.site_name.,
@@ -111,8 +111,6 @@ site_data_db = data.frame('region'=site_data$region,
     'contact'=rep('https://doi.org/10.5066/F70864KX', nsites),
     'contactEmail'=rep(NA, nsites),
     stringsAsFactors=FALSE)
-
-dbWriteTable(con, 'site', site_data_db, append=TRUE)
 
 #model inputs ####
 dir.create('modIn_data')
@@ -281,6 +279,7 @@ for(i in 1:length(modOut_ids)){
     # saveRDS(modOut, paste0('RDS_components/', sitename, '_modOut.rds'))
 }
 
+
 #model estimates and predictors ####
 dir.create('estpred')
 
@@ -327,6 +326,20 @@ mod_diag = read.table(unzipped, header=TRUE,
 
 str(mod_diag)
 saveRDS(mod_diag, paste0('RDS_components/diag.rds'))
+
+
+#other ####
+
+#filter sites so that only those that were modeled get inserted into database
+outd_files = dir('RDS_components/outData/', pattern='outData')
+sitecodes = str_match(outd_files, '([0-9]+)_[0-9]{4}.rds$')[,2]
+all_sitecodes = str_match(site_data_db$site, '[0-9]+')
+unmodeled = which(! all_sitecodes %in% sitecodes)
+site_data_db = site_data_db[-unmodeled,]
+
+#insert
+dbWriteTable(con, 'site', site_data_db, append=TRUE)
+
 
 #testing####
 testpath2 = '/home/mike/git/streampulse/model/ancillary/powell_data_import/RDS_components/nwis_06461500_inData.rds'
