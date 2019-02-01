@@ -99,6 +99,9 @@ state_lookups_abb[is.na(state_lookups_abb)] = c('DC', 'PR', 'PR')
 
 site_data$region[still_missing] = state_lookups_abb
 
+#modify sitenames for portal compatibility
+site_data$X.site_name. = sub('_', '-', site_data$X.site_name.)
+
 #prepare site data for db insertion (later)
 nsites = nrow(site_data)
 site_data_db = data.frame('region'=site_data$region,
