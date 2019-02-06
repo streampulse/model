@@ -11,12 +11,14 @@ library(dplyr)
 library(tidyr)
 library(streamMetabolizer)
 
-setwd('/home/mike/git/streampulse/model/ancillary/powell_data_import')
+setwd('/home/aaron/mike_files/powell_data_import')
+# setwd('/home/mike/git/streampulse/model/ancillary/powell_data_import')
 cur_time = Sys.time()
 attr(cur_time, 'tzone') = 'UTC'
 
 #load sb credentials and local directory locations (specific to my machine)
-conf = read_lines('/home/mike/git/streampulse/server_copy/sp/config.py')
+# conf = read_lines('/home/mike/git/streampulse/server_copy/sp/config.py')
+conf = read_lines('/home/aaron/sp/config.py')
 extract_from_config = function(key){
     ind = which(lapply(conf, function(x) grepl(key, x)) == TRUE)
     val = str_match(conf[ind], '.*\\"(.*)\\"')[2]
@@ -78,19 +80,19 @@ still_missing = is.na(site_data$region)
 missing_state_latlon = site_data[still_missing, c('X.lat.', 'X.lon.')]
 
 #get the rest from AskGeo, via lat and long (commented to avoid accidental query)
-# api_key = extract_from_config('ASKGEO_KEY')
-# accnt_id = '2023'
-# latlongs = paste(paste(missing_state_latlon$X.lat., missing_state_latlon$X.lon.,
-#     sep='%2C'), collapse='%3B')
-# askGeoReq = paste0('https://api.askgeo.com/v1/', accnt_id, '/',
-#     api_key, '/query.json?databases=UsState2010&points=', latlongs)
-#
-# r = httr::GET(askGeoReq)
-# json = httr::content(r, as="text", encoding="UTF-8")
-# askGeoResp = jsonlite::fromJSON(json)
+api_key = extract_from_config('ASKGEO_KEY')
+accnt_id = '2023'
+latlongs = paste(paste(missing_state_latlon$X.lat., missing_state_latlon$X.lon.,
+    sep='%2C'), collapse='%3B')
+askGeoReq = paste0('https://api.askgeo.com/v1/', accnt_id, '/',
+    api_key, '/query.json?databases=UsState2010&points=', latlongs)
+
+r = httr::GET(askGeoReq)
+json = httr::content(r, as="text", encoding="UTF-8")
+askGeoResp = jsonlite::fromJSON(json)
 
 #load saved askgeo results
-askGeoResp = readRDS('~/Desktop/askGeoResp.rds')
+# askGeoResp = readRDS('~/Desktop/askGeoResp.rds')
 
 state_lookups = toupper(askGeoResp$data$UsState2010$CensusAreaName)
 state_lookups = str_remove_all(state_lookups, '\\s')
@@ -139,6 +141,7 @@ for(i in 1:length(modIn_ids)){
 
     #get site data from above
     sitename = str_match(modIn_zip, 'modIn_data/(nwis_[0-9]+)_.*')[,2]
+    sitename = sub('_', '-', sitename)
     site_deets = site_data_db[site_data_db$site == sitename,]
 
     #save df that will become the "data" component of the RDS obj saved on server
@@ -147,26 +150,33 @@ for(i in 1:length(modIn_ids)){
         format='%Y-%m-%dT%H:%M:%SZ', tz='UTC')
     sitecode = str_match(sitename, '[0-9]+')[[1]]
     modyear = substr(modIn_data$date[nrow(modIn_data) / 2], 1, 4)
+
+    #save input object
     saveRDS(modIn_data, paste0('RDS_components/inData_', site_deets$region, '_',
         sitecode, '_', modyear, '.rds'))
 
-    # modIn_data$date = NULL
-    #
-    # #convert to long format, populate rest of db data table
-    # modIn_data$DateTime_UTC = convert_solartime_to_UTC(modIn_data$solar.time,
-    #     site_deets$longitude, time.type='mean solar')
-    # modIn_data$solar.time = NULL
-    # modIn_data = gather(modIn_data, 'variable', 'value', -'DateTime_UTC')
-    #
-    # modIn_data$region = site_deets$region
-    # modIn_data$site = site_deets$site
-    # modIn_data$flag = NA
-    # modIn_data$upload_id = -902
-    # # modIn_data$solar.time = NULL
-    #
-    # # colnames(modIn_data)[colnames(modIn_data) == 'solar.time'] = 'DateTime_UTC'
-    #
-    # dbWriteTable(con, 'data', modIn_data, append=TRUE)
+    modIn_data$date = NULL
+
+    #convert to long format, populate rest of db data table
+    modIn_data$DateTime_UTC = convert_solartime_to_UTC(modIn_data$solar.time,
+        site_deets$longitude, time.type='mean solar')
+    modIn_data$solar.time = NULL
+    colname_map = c('depth'='Depth_m', 'discharge'='Discharge_m3s',
+        'DO.obs'='DO_mgL', 'DO.sat'='satDO_mgL', 'light'='Light_PAR',
+        'temp.water'='WaterTemp_C', 'DateTime_UTC'='DateTime_UTC')
+    newnames = unname(colname_map[match(colnames(modIn_data), names(colname_map))])
+    colnames(modIn_data) = newnames
+    # colnamefac = factor(colnames(modIn_data))
+    # levels(colnamefac)
+
+    modIn_data = gather(modIn_data, 'variable', 'value', -'DateTime_UTC')
+
+    modIn_data$region = site_deets$region
+    modIn_data$site = site_deets$site
+    modIn_data$flag = NA
+    modIn_data$upload_id = -902
+
+    dbWriteTable(con, 'powell', modIn_data, append=TRUE)
 
     # spread(modIn_data[1:10,], 'variable', 'value') %>%
     #     select(DateTime_UTC
@@ -249,6 +259,7 @@ for(i in 1:length(modOut_ids)){
             header=TRUE, sep='\t', stringsAsFactors=FALSE, quote='')
     }))
 
+    #write output extras object
     saveRDS(modOut, paste0('RDS_components/outExtra/outExtra_',
         site_deets$region, '_', sitecode, '.rds'))
 
@@ -270,6 +281,8 @@ for(i in 1:length(modOut_ids)){
     for(y in yrs){
         ff = outdf[substr(outdf$date, 1, 4) == y,]
         if(nrow(ff) > 0){
+
+            #write output object
             saveRDS(ff, paste0('RDS_components/outData/outData_',
                 site_deets$region, '_', sitecode, '_', y, '.rds'))
         }
@@ -296,7 +309,6 @@ estpred = read.table(unzipped, header=TRUE,
     sep='\t', stringsAsFactors=FALSE, quote='')
 
 ep_slice = estpred[estpred$site_name == 'nwis_06461500',]
-str(ep_slice)
 
 saveRDS(estpred, paste0('RDS_components/estpred.rds'))
 
@@ -312,7 +324,6 @@ unzipped = unzip(zipfile=paste0(config_files[zp]), exdir='config')
 config = read.table(unzipped, header=TRUE,
     sep='\t', stringsAsFactors=FALSE, quote='')
 
-str(config)
 saveRDS(config, paste0('RDS_components/config.rds'))
 
 #model diagnostics ####
@@ -345,32 +356,29 @@ dbWriteTable(con, 'site', site_data_db, append=TRUE)
 
 
 #testing####
-testpath2 = '/home/mike/git/streampulse/model/ancillary/powell_data_import/RDS_components/nwis_06461500_inData.rds'
-rdsdata = readRDS(testpath2)
-
-str(rdsdata)
-
-testfit = readRDS('~/Desktop/test_modelfit.rds')
-az = readRDS('~/git/streampulse/server_copy/sp/shiny/data/modOut_AZ_LV_2018.rds')
-azp = readRDS('~/git/streampulse/server_copy/sp/shiny/data/predictions_AZ_LV_2018.rds')
-str(az$data_daily) #missing, but not needed?
-str(az$data) #all but DO.mod
-str(az$fit$daily)
-
-str(modOut$daily)
-str(modOut$KQ_overall)
-str(modOut$overall)
-str(modOut$KQ_binned)
-
-rdsdata = readRDS(paste0('RDS_components/', sitename, '_inData.rds'))
-str(rdsdata)
-testpath = '/home/mike/git/streampulse/model/ancillary/powell_data_import/RDS_components/nwis_11463000_modOut.rds'
-
-
-
-
-authenticate_sb(sb_usr, sb_pass)
-data_products
-
-
-#assemble model output objects as if they were returned by streamMetabolizer ####
+# testpath2 = '/home/mike/git/streampulse/model/ancillary/powell_data_import/RDS_components/nwis_06461500_inData.rds'
+# rdsdata = readRDS(testpath2)
+#
+# str(rdsdata)
+#
+# testfit = readRDS('~/Desktop/test_modelfit.rds')
+# az = readRDS('~/git/streampulse/server_copy/sp/shiny/data/modOut_AZ_LV_2018.rds')
+# azp = readRDS('~/git/streampulse/server_copy/sp/shiny/data/predictions_AZ_LV_2018.rds')
+# str(az$data_daily) #missing, but not needed?
+# str(az$data) #all but DO.mod
+# str(az$fit$daily)
+#
+# str(modOut$daily)
+# str(modOut$KQ_overall)
+# str(modOut$overall)
+# str(modOut$KQ_binned)
+#
+# rdsdata = readRDS(paste0('RDS_components/', sitename, '_inData.rds'))
+# str(rdsdata)
+# testpath = '/home/mike/git/streampulse/model/ancillary/powell_data_import/RDS_components/nwis_11463000_modOut.rds'
+#
+#
+#
+#
+# authenticate_sb(sb_usr, sb_pass)
+# data_products
