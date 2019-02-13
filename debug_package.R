@@ -75,7 +75,6 @@ query_available_data(NULL, NULL, '2017-04-07', '2017-04-10', NULL)
 query_available_data(NULL, NULL, '2014-04-07', '2014-06-10', NULL)
 query_available_data('all', 'LV', '2017-04-07', '2017-04-10', NULL)
 query_available_data(NULL, NULL, '2017-04-08', '2017-04-09', 'DO_mgL')
-query_available_data(NULL, NULL, '2014-05-08', '2014-06-09', 'DO_mgL', FALSE)
 
 #debug request_results ####
 sitecode = 'NC_Eno'
