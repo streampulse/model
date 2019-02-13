@@ -57,6 +57,7 @@ site_data[char_cols] = apply(site_data[,char_cols], 2, str_replace_all,
 u = 'http://www.printabledirect.com/list-of-all-50-states-abbreviations-chart.htm'
 u_html = read_html(u)
 # write_html(u_html, '~/Desktop/hax/utilities/state_abbrevs.html')
+# read_html('~/Desktop/hax/utilities/state_abbrevs.html')
 
 elements = html_nodes(u_html, xpath="//tr//font[not(strong)]") %>%
     html_text(trim=TRUE)
@@ -92,7 +93,7 @@ json = httr::content(r, as="text", encoding="UTF-8")
 askGeoResp = jsonlite::fromJSON(json)
 
 #load saved askgeo results
-# askGeoResp = readRDS('~/Desktop/askGeoResp.rds')
+askGeoResp = readRDS('~/Desktop/askGeoResp.rds')
 
 state_lookups = toupper(askGeoResp$data$UsState2010$CensusAreaName)
 state_lookups = str_remove_all(state_lookups, '\\s')
