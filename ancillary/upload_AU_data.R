@@ -8,10 +8,10 @@ library(tidyr)
 # library(jsonlite)
 
 #connect to MySQL
-# setwd('/home/aaron/sp/scheduled_scripts/')
-setwd('/home/mike/git/streampulse/server_copy/sp/scheduled_scripts/')
+setwd('/home/aaron/sp/scheduled_scripts/')
+# setwd('/home/mike/git/streampulse/server_copy/sp')
 
-conf = readLines('../config.py')
+conf = readLines('config.py')
 extract_from_config = function(key){
     ind = which(lapply(conf, function(x) grepl(key, x)) == TRUE)
     val = str_match(conf[ind], '.*\\"(.*)\\"')[2]
@@ -23,7 +23,8 @@ con = dbConnect(RMariaDB::MariaDB(), dbname='sp',
     username='root', password=pw)
 
 #read in and format daily discharge data; this will be converted to per second
-setwd('/home/mike/Dropbox/streampulse/data/australia_data/')
+setwd('/home/aaron/misc_data/australia_import/')
+# setwd('/home/mike/Dropbox/streampulse/data/australia_data/')
 
 Qnames = names(read.xlsx('daily_q_2014-17_LTIMsites.xlsx', 'Sheet1', rows=4))
 # Qnames[Qnames == 'Barham.Bridge,.Noorong'] = 'Barham.Bridge'
