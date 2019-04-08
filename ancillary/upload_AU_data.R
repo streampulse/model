@@ -8,7 +8,7 @@ library(tidyr)
 # library(jsonlite)
 
 #connect to MySQL
-setwd('/home/aaron/sp/scheduled_scripts/')
+setwd('/home/aaron/sp/')
 # setwd('/home/mike/git/streampulse/server_copy/sp')
 
 conf = readLines('config.py')
@@ -92,7 +92,6 @@ latlongs = read.csv('au_latlongs.csv', stringsAsFactors=FALSE)
 #extract data from files and compile
 dirs = list.dirs(recursive=FALSE)
 # d=dirs[1]; f=files[4]
-dirs = dirs[2:3]
 site_set = c()
 for(d in dirs){
 

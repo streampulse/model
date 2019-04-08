@@ -1,5 +1,5 @@
 library(dplyr)
-library(accelerometry)
+# library(accelerometry)
 library(imputeTS)
 library(zoo)
 library(tidyr)
@@ -39,7 +39,9 @@ Q = zq[zq$site == site, 'discharge_cms']
 offset = offsets[offsets$site == site, 2] / 100
 
 d=streampulse_data; model="streamMetabolizer"; type="bayes"
-interval='15 min'; rm_flagged=list('Bad Data', 'Questionable')
+rm_flagged=list('Bad Data', 'Questionable')
+interval='15 min'
+interval='30 min'
 fillgaps='interpolation'; maxhours=3
 zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=NULL, b=NULL,
     fit='power', ignore_oob_Z=TRUE, plot=TRUE)
@@ -58,6 +60,11 @@ deficit_src='DO_mod'
 df=dd
 maxspan_days=5; knn=3
 sint=desired_int; algorithm=fillgaps; maxhours=3
+
+#debug gapfill
+df=dd; maxspan_days=5; knn=3;
+sint=desired_int; algorithm=fillgaps; maxhours=3
+sint = difftime(as.POSIXct('2011-01-01 00:30:00'), as.POSIXct('2011-01-01 00:60:00'))
 
 #debug query_available_results####
 region='all'; site=NULL; year=NULL
