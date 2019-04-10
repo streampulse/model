@@ -1,6 +1,7 @@
 # setup ####
 
-rm(list=ls()); cat('\014')
+# rm(list=ls()); cat('\014')
+
 # install.packages('devtools')
 # library(devtools)
 # install_github('streampulse/StreamPULSE', ref='master', dependencies=TRUE)
@@ -9,44 +10,34 @@ rm(list=ls()); cat('\014')
 # install.packages('ks')
 # install.packages('RColorBrewer')
 
-library(StreamPULSE)
+# library(StreamPULSE)
 library(streamMetabolizer)
 # library(ks)
 # library(RColorBrewer)
 
 #expects sm_figs and sm_out directories at this location
 # setwd('C:/Users/vlahm/Desktop/untracked')
-setwd('K:/untracked')
-# setwd('~/Desktop/untracked')
+# setwd('K:/untracked')
+setwd('~/Desktop/untracked')
 
 # choose sites and dates ####
-# site_deets = data.frame(
-#     site_code = c('SE_M18','SE_M6'),#c('PR_QS', 'PR_Icacos'),
-#     start_date = c('2016-06-08', '2016-06-08'),#c('2017-03-01', '2017-03-01'),
-#     end_date = c('2016-10-12', '2016-10-12'),#c('2017-12-31', '2017-12-31'),
-#     stringsAsFactors=FALSE)
-
-# write.csv(site_deets, 'site_deets.csv', row.names=FALSE)
 
 #filter ####
-site_deets = read.csv('site_deets.csv', stringsAsFactors=FALSE)
-site_deets$int = '15 min'
-site_deets$int[site_deets$site_code == 'RI_CorkBrk'] = '30 min'
-site_deets$int[(site_deets$site_code == 'FL_NR1000' &
-                  site_deets$start_date == '2016-01-01')] = '60 min'
+site_deets = read.csv('~/git/streampulse/model/site_deets.csv',
+    stringsAsFactors=FALSE)
 
-# site_deets = site_deets[substr(site_deets$site_code, 1, 2) != 'SE',]
-site_deets$skip[15:nrow(site_deets)] = ''
+# site_deets$skip[15:nrow(site_deets)] = ''
 site_deets = site_deets[site_deets$skip != 'x',]
-site_deets = site_deets[1:31,]
-site_deets = site_deets[32:62,]
+# site_deets = site_deets[1:31,]
+# site_deets = site_deets[32:62,]
+site_deets = site_deets[substr(site_deets$site_code, 1, 2) == 'NC',]
 
 # run ####
 results = matrix('', ncol=4, nrow=nrow(site_deets))
 colnames(results) = c('Region', 'Site', 'Year', 'Result')#, 'Kmax', 'K_ER_cor')
 
-zq = read.csv('C:/Users/vlahm/Desktop/model/ZQ_data.csv')
-offsets = read.csv('C:/Users/vlahm/Desktop/model/sensor_offsets.csv')
+zq = read.csv('~/git/streampulse/model/ZQ_data.csv')
+offsets = read.csv('~/git/streampulse/model/sensor_offsets.csv')
 
 for(i in 1:nrow(site_deets)){
 
@@ -54,6 +45,16 @@ for(i in 1:nrow(site_deets)){
     token = site_deets$tok[i]
     start_date = site_deets$start_date[i]
     end_date = site_deets$end_date[i]
+    int = site_deets$int[i]
+
+    #establish K600_lnQ_nodes_meanlog prior (no parameter to access this within
+    #fit metab at the moment
+    av_veloc = site_deets$velocity_ms[i]
+    av_slope = site_deets$slope_prop[i]
+    av_depth = site_deets$depth_m[i]
+    av_disch = site_deets$discharge_m3s[i]
+    logK = log(5.62) + 0.504*log(av_veloc * av_slope) -
+        0.575*log(av_depth) - 0.0892*log(av_disch)
 
     results[i,1] = strsplit(site_code, '_')[[1]][1]
     results[i,2] = strsplit(site_code, '_')[[1]][2]
@@ -64,7 +65,7 @@ for(i in 1:nrow(site_deets)){
                                     enddate=end_date, token=token))
 
     if(class(streampulse_data) == 'try-error'){
-        results[i,3] = 'request error'
+        results[i,4] = 'request error'
         next
     }
 
@@ -77,16 +78,19 @@ for(i in 1:nrow(site_deets)){
         offset = offsets[offsets$site == site, 2] / 100
 
         fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
-            model='streamMetabolizer', interval=site_deets$int[i],
+            model='streamMetabolizer', interval=int,
             zq_curve=list(sensor_height=offset, Z=Z, Q=Q, fit='power',
-                ignore_oob_Z=TRUE, plot=TRUE)))
+                ignore_oob_Z=TRUE, plot=TRUE), estimate_areal_depth=FALSE,
+            estimate_PAR=TRUE, retrieve_air_pres=TRUE))
     } else {
         fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
-            model='streamMetabolizer', interval=site_deets$int[i]))
+            model='streamMetabolizer', interval=int,
+            estimate_areal_depth=FALSE, estimate_PAR=TRUE,
+            retrieve_air_pres=TRUE))
     }
 
     if(class(fitdata) == 'try-error'){
-        results[i,3] = 'prep error'
+        results[i,4] = 'prep error'
         next
     }
 
@@ -110,18 +114,19 @@ for(i in 1:nrow(site_deets)){
     # dev.off()
 
     #fit
+    fitdata$data$temp.water[fitdata$data$temp.water > 40] = NA
     modelfit = try(fit_metabolism(fitdata))
     # modelfit = readRDS('sm_out/fit_NC_Eno_2017-01-01_2017-02-01_bayes_binned_obsproc_trapezoid_DO-mod_stan.rds')
 
     if(class(modelfit) == 'try-error'){
-        results[i,3] = 'fit error'
+        results[i,4] = 'fit error'
         next
     }
 
-    #save fit object
-    saveRDS(modelfit, paste('sm_out/fit',
-        site_code, start_date, end_date,
-        'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
+    # #save fit object
+    # saveRDS(modelfit, paste('sm_out/fit',
+    #     site_code, start_date, end_date,
+    #     'bayes_binned_obsproc_trapezoid_DO-mod_stan.rds', sep='_'))
 
     #get diagnostic stats
     # results[i,4] = as.character(round(max(modelfit@fit$daily$K600_daily_mean,
@@ -149,7 +154,7 @@ for(i in 1:nrow(site_deets)){
     # diag_plots(predictions, site_code, suppress_NEP=TRUE)
     # dev.off()
 
-    results[i,3] = 'Run Finished'
+    results[i,4] = 'Run Finished'
 
 }
 
