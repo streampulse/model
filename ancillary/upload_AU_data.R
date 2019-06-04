@@ -5,6 +5,7 @@ library(dplyr)
 library(openxlsx)
 library(tidyr)
 library(zoo)
+library(lubridate)
 # library(httr)
 # library(jsonlite)
 
@@ -161,9 +162,9 @@ for(d in dirs){
                 'DO_mgL'=DO.meas, everything())
         data = data[! duplicated(data$DateTime_UTC),]
 
-        message(paste('df length before removing non-0:00s', nrow(data)))
-        data = data[substr(data$DateTime_UTC, 16, 19) == '0:00',]
-        message(paste('df length after removing non-0:00s', nrow(data)))
+        # message(paste('df length before removing non-0:00s', nrow(data)))
+        # data = data[substr(data$DateTime_UTC, 16, 19) == '0:00',]
+        # message(paste('df length after removing non-0:00s', nrow(data)))
 
         #spread out daily discharge data so it covers all time points
         # curcol = which(Qnames == gsub(' ', '.', namemap[site_deets[4]]))
@@ -179,25 +180,36 @@ for(d in dirs){
             skip=8)
 
         q_dat = mutate(q_dat, Datetime=as.POSIXct(Datetime,
-                format='%d/%m/%Y %H:%M:%S')) %>%
+                format='%d/%m/%Y %H:%M:%S', tz='UTC')) %>%
             filter(QC != 255, QC.1 != 255, ! is.na(Datetime)) %>%
             arrange()
 
-        fiveseq = data.frame(Datetime=seq(q_dat$Datetime[1],
+        fiveseq = data.frame(Datetime=seq.POSIXt(q_dat$Datetime[1],
                 q_dat$Datetime[nrow(q_dat)], by='5 min'))
 
         q_dat = select(q_dat, Datetime, Level_m=Water.Level..m..Mean,
                 Discharge_MLd=Discharge..Ml.d..Mean) %>%
             mutate(Discharge_m3s=Discharge_MLd * (1e6 / (1000 * 86400))) %>%
             select(-Discharge_MLd) %>%
-            right_join(fiveseq, by='Datetime')
+            full_join(fiveseq, by='Datetime') %>%
+            arrange(Datetime)
 
         q_dat$Level_m = zoo::na.approx(q_dat$Level_m,
             na.rm=FALSE, rule=2)
         q_dat$Discharge_m3s = zoo::na.approx(q_dat$Discharge_m3s,
             na.rm=FALSE, rule=2)
 
+        data$DateTime_UTC = lubridate::round_date(data$DateTime_UTC, '10 minutes')
+        q_dat$Datetime = lubridate::round_date(q_dat$Datetime, '5 minutes')
+        data = data[! duplicated(data$DateTime_UTC),]
+
+        tenseq = data.frame(DateTime_UTC=seq.POSIXt(data$DateTime_UTC[1],
+                data$DateTime_UTC[nrow(data)], by='10 min'))
+
+        data = right_join(data, tenseq, by='DateTime_UTC')
         data = left_join(data, q_dat, by=c('DateTime_UTC'='Datetime'))
+        # data = data[substr(data$DateTime_UTC, 16, 19) != '5:00',]
+        # rle(diff(as.numeric(data$DateTime_UTC)))
 
         #convert to long format, add remaining fields, insert into db
         data = gather(data, 'Variable', 'Value', Light_PAR:Discharge_m3s)
