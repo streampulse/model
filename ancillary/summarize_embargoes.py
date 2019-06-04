@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, '/home/mike/git/streampulse/server_copy/sp')
+#sys.path.insert(0, '/home/mike/git/streampulse/server_copy/sp')
+sys.path.insert(0, '/home/aaron/sp')
 
 from flask import (Flask, Markup, session, flash, render_template, request,
     jsonify, url_for, make_response, send_file, redirect, g, send_from_directory)
@@ -446,4 +447,4 @@ sitedata = sitedata.drop(['Lat', 'Lon', 'USGS gage', 'by', 'firstRecord',
     'lastRecord'], axis=1)
 sitedata = sitedata[['Region','Site','Name','EmbargoDays','DataCount','Coverage',
     'AddDate','Contact','Email','Variables']]
-sitedata.to_csv('~/Desktop/embargo_summary.csv', index=False, encoding='utf-8')
+sitedata.to_csv('~/embargo_summary.csv', index=False, encoding='utf-8')
