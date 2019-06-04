@@ -96,10 +96,12 @@ dirs = dirs[dirs != './continuous_Q']
 # d=dirs[2]; f=files[2]
 dirs=dirs[2] ############REMOVE THIS
 site_set = c()
+# d=dirs
 for(d in dirs){
 
     files = list.files(d)
     files=files[2]#################REMOVE THIS
+    # f=files
     for(f in files){
 
         cur_time = Sys.time()
@@ -158,6 +160,10 @@ for(d in dirs){
             select(DateTime_UTC, 'Light_PAR'=I, 'WaterTemp_C'=tempC,
                 'DO_mgL'=DO.meas, everything())
         data = data[! duplicated(data$DateTime_UTC),]
+
+        message(paste('df length before removing non-0:00s', nrow(data)))
+        data = data[substr(data$DateTime_UTC, 16, 19) == '0:00',]
+        message(paste('df length after removing non-0:00s', nrow(data)))
 
         #spread out daily discharge data so it covers all time points
         # curcol = which(Qnames == gsub(' ', '.', namemap[site_deets[4]]))
