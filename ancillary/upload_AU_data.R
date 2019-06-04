@@ -4,6 +4,7 @@ library(stringr)
 library(dplyr)
 library(openxlsx)
 library(tidyr)
+library(zoo)
 # library(httr)
 # library(jsonlite)
 
@@ -91,11 +92,14 @@ latlongs = read.csv('au_latlongs.csv', stringsAsFactors=FALSE)
 
 #extract data from files and compile
 dirs = list.dirs(recursive=FALSE)
-# d=dirs[1]; f=files[4]
+dirs = dirs[dirs != './continuous_Q']
+# d=dirs[2]; f=files[2]
+dirs=dirs[2] ############REMOVE THIS
 site_set = c()
 for(d in dirs){
 
     files = list.files(d)
+    files=files[2]#################REMOVE THIS
     for(f in files){
 
         cur_time = Sys.time()
@@ -156,13 +160,38 @@ for(d in dirs){
         data = data[! duplicated(data$DateTime_UTC),]
 
         #spread out daily discharge data so it covers all time points
-        curcol = which(Qnames == gsub(' ', '.', namemap[site_deets[4]]))
-        ML_m3s_conv_fac = 1e6 / (1000 * 86400)
-        discharge = Q[, curcol] * ML_m3s_conv_fac
-        data$date = as.Date(data$DateTime_UTC)
-        dateMatchInds = match(data$date, Qdates, nomatch=NA)
-        data$Discharge_m3s = discharge[dateMatchInds]
-        data = select(data, -date)
+        # curcol = which(Qnames == gsub(' ', '.', namemap[site_deets[4]]))
+        # ML_m3s_conv_fac = 1e6 / (1000 * 86400)
+        # discharge = Q[, curcol] * ML_m3s_conv_fac
+        # data$date = as.Date(data$DateTime_UTC)
+        # dateMatchInds = match(data$date, Qdates, nomatch=NA)
+        # data$Discharge_m3s = discharge[dateMatchInds]
+        # data = select(data, -date)
+
+        #merge continuous discharge data, conform intervals
+        q_dat = read.csv('continuous_Q/405232.csv', stringsAsFactors=FALSE,
+            skip=8)
+
+        q_dat = mutate(q_dat, Datetime=as.POSIXct(Datetime,
+                format='%d/%m/%Y %H:%M:%S')) %>%
+            filter(QC != 255, QC.1 != 255, ! is.na(Datetime)) %>%
+            arrange()
+
+        fiveseq = data.frame(Datetime=seq(q_dat$Datetime[1],
+                q_dat$Datetime[nrow(q_dat)], by='5 min'))
+
+        q_dat = select(q_dat, Datetime, Level_m=Water.Level..m..Mean,
+                Discharge_MLd=Discharge..Ml.d..Mean) %>%
+            mutate(Discharge_m3s=Discharge_MLd * (1e6 / (1000 * 86400))) %>%
+            select(-Discharge_MLd) %>%
+            right_join(fiveseq, by='Datetime')
+
+        q_dat$Level_m = zoo::na.approx(q_dat$Level_m,
+            na.rm=FALSE, rule=2)
+        q_dat$Discharge_m3s = zoo::na.approx(q_dat$Discharge_m3s,
+            na.rm=FALSE, rule=2)
+
+        data = left_join(data, q_dat, by=c('DateTime_UTC'='Datetime'))
 
         #convert to long format, add remaining fields, insert into db
         data = gather(data, 'Variable', 'Value', Light_PAR:Discharge_m3s)
