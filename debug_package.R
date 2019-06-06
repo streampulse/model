@@ -26,39 +26,39 @@ variables = c('DO_mgL','DOsat_pct','satDO_mgL','WaterPres_kPa',
     'Depth_m','WaterTemp_C','Light_PAR','AirPres_kPa')#,'Discharge_m3s')
 x = request_data('NE_nwis-06461500', '2014-02-10', '2014-06-15')
 x = request_data('CT_BUNN', '2015-05-10', '2015-06-15')
+x = request_data('RI_CorkBrk', '2016-01-01', '2016-12-31')
+x = request_data('AU_McCoys-Bridge-700', '2015-01-01', '2015-12-31')
 
 #debug prep_metabolism ####
 zq = read.csv('/home/mike/Dropbox/streampulse/data/rating_curves/ZQ_data.csv')
 offsets = read.csv('/home/mike/Dropbox/streampulse/data/rating_curves/sensor_offsets.csv')
 site_deets = read.csv('~/git/streampulse/model/site_deets.csv',
     stringsAsFactors=FALSE)
+site_code='RI_CorkBrk'
 site = strsplit(site_code, '_')[[1]][2]
 Z = zq[zq$site == site, 'level_m']
 Q = zq[zq$site == site, 'discharge_cms']
 offset = offsets[offsets$site == site, 2] / 100
 
+streampulse_data = x
 d=streampulse_data; model="streamMetabolizer"; type="bayes"
 rm_flagged=list('Bad Data', 'Questionable')
-interval='15 min'
+# interval='15 min'
 interval='30 min'
 fillgaps='interpolation'; maxhours=3
 zq_curve=list(sensor_height=NULL, Z=NULL, Q=NULL, a=NULL, b=NULL,
     fit='power', ignore_oob_Z=TRUE, plot=TRUE)
-zq_curve=list(sensor_height=offset, Z=Z, Q=Q, fit='power',
-    ignore_oob_Z=TRUE, plot=TRUE)
+# zq_curve=list(sensor_height=offset, Z=Z, Q=Q, fit='power',
+#     ignore_oob_Z=TRUE, plot=TRUE)
 estimate_areal_depth=FALSE
-estimate_areal_depth=TRUE
+# estimate_areal_depth=TRUE
 estimate_PAR=TRUE
+retrieve_air_pres=FALSE
 
 #debug fit_metabolism ####
 d=fitdata; pool_K600='binned'; err_obs_iid=TRUE
 err_proc_acor=FALSE; err_proc_iid=TRUE; ode_method='trapezoid'
 deficit_src='DO_mod'
-
-#debug gap fill
-df=dd
-maxspan_days=5; knn=3
-sint=desired_int; algorithm=fillgaps; maxhours=3
 
 #debug fit_metabolism ####
 d=fitdata; pool_K600='binned'; err_obs_iid=TRUE;
@@ -69,6 +69,20 @@ deficit_src='DO_mod'
 df=dd; maxspan_days=5; knn=3;
 sint=desired_int; algorithm=fillgaps; maxhours=3
 sint = difftime(as.POSIXct('2011-01-01 00:30:00'), as.POSIXct('2011-01-01 00:60:00'))
+
+#debug series_impute
+wposix = which(sapply(df, function(x) base::inherits(x, "POSIXct")))
+dtcol = colnames(df)[wposix]
+input_data = df %>% mutate(date=as.Date(df[,dtcol]),
+    time=strftime(df[,dtcol], format="%H:%M:%S")) %>%
+    select(-one_of(dtcol)) %>% select(date, time, everything())
+
+i=4 #starts with 3
+x=input_data[,i]
+samples_per_day = 24 * 60 / as.double(sint, units='mins')
+tol=samples_per_day * (maxhours / 24)
+samp=samples_per_day; algorithm='interpolation'
+variable_name=colnames(input_data)[i]
 
 #debug query_available_results####
 region='all'; site=NULL; year=NULL
