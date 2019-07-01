@@ -56,21 +56,24 @@ estimate_PAR=TRUE
 retrieve_air_pres=FALSE
 
 #debug fit_metabolism ####
-d=fitdata; pool_K600='binned'; err_obs_iid=TRUE
-err_proc_acor=FALSE; err_proc_iid=TRUE; ode_method='trapezoid'
-deficit_src='DO_mod'
-
-#debug fit_metabolism ####
 d=fitdata; pool_K600='binned'; err_obs_iid=TRUE;
 err_proc_acor=FALSE; err_proc_iid=TRUE; ode_method='trapezoid';
 deficit_src='DO_mod'
 
+#prepare for debug gapfill
+site_code = 'AZ_OC'; start_date = '2018-06-01'; end_date = '2018-07-01'
+sp_data = request_data(sitecode=site_code,
+    startdate=start_date, enddate=end_date)
+sp_data_prepped = prep_metabolism(d=sp_data, type='bayes',
+    model='streamMetabolizer')
+
 #debug gapfill
-df=dd; maxspan_days=5; knn=3;
-sint=desired_int; algorithm=fillgaps; maxhours=3
+df = sp_data_prepped$data #df=dd
+maxspan_days=5; knn=3;
+sint=interval; algorithm=fillgaps; maxhours=3
 sint = difftime(as.POSIXct('2011-01-01 00:30:00'), as.POSIXct('2011-01-01 00:60:00'))
 
-#debug series_impute
+#debug series_impute (run this after running gap_fill stuff)
 wposix = which(sapply(df, function(x) base::inherits(x, "POSIXct")))
 dtcol = colnames(df)[wposix]
 input_data = df %>% mutate(date=as.Date(df[,dtcol]),
@@ -79,6 +82,7 @@ input_data = df %>% mutate(date=as.Date(df[,dtcol]),
 
 i=4 #starts with 3
 x=input_data[,i]
+x[100:300] = NA; x[10:20] = NA
 samples_per_day = 24 * 60 / as.double(sint, units='mins')
 tol=samples_per_day * (maxhours / 24)
 samp=samples_per_day; algorithm='interpolation'
