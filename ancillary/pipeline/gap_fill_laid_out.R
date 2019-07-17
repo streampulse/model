@@ -34,7 +34,7 @@ sp_data_prepped$data[1000:1200,] = NA
 
 ######
 
-df=sp_data_prepped$data
+df=data.frame(sp_data_prepped$data)
 maxspan_days=5
 knn=3
 # df is data frame, requires one column as POSIXct date time and the other columns as numeric
@@ -117,7 +117,8 @@ if( !(length(wposix)==1) ){
 dtcol <- colnames(df)[wposix]
 
 # kind of goofy to do this by date and time, but that's because I translated the code from Python
-input_data <- df %>% mutate(date=as.Date(df[,dtcol]), time=strftime(df[,dtcol], format="%H:%M:%S")) %>%
+input_data <- df %>% mutate(date=as.Date(df[,dtcol]),
+    time=strftime(df[,dtcol], format="%H:%M:%S")) %>%
     select(-one_of(dtcol)) %>% select(date, time, everything())
 # index data
 date_index <- df %>% select(one_of(dtcol))

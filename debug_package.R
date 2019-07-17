@@ -61,7 +61,7 @@ err_proc_acor=FALSE; err_proc_iid=TRUE; ode_method='trapezoid';
 deficit_src='DO_mod'
 
 #prepare for debug gapfill
-site_code = 'AZ_OC'; start_date = '2018-06-01'; end_date = '2018-07-01'
+# site_code = 'AZ_OC'; start_date = '2018-06-01'; end_date = '2018-07-01'
 sp_data = request_data(sitecode=site_code,
     startdate=start_date, enddate=end_date)
 sp_data_prepped = prep_metabolism(d=sp_data, type='bayes',

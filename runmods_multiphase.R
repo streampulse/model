@@ -1,0 +1,153 @@
+# rm(list=ls()); cat('\014')
+
+# install.packages('devtools')
+# library(devtools)
+# install_github('streampulse/StreamPULSE', ref='master', dependencies=TRUE)
+# install.packages('streamMetabolizer', dependencies=TRUE,
+#                  repos=c('https://owi.usgs.gov/R','https://cran.rstudio.com'))
+
+library(StreamPULSE)
+library(streamMetabolizer)
+library(plyr)
+
+#expects sm_figs and sm_out directories at this location
+setwd('~/Desktop/untracked')
+
+# choose sites and dates ####
+
+#filter ####
+site_deets = read.csv('~/git/streampulse/model/site_deets.csv',
+    stringsAsFactors=FALSE)
+
+# site_deets$skip[15:nrow(site_deets)] = ''
+# site_deets = site_deets[site_deets$skip != 'x',]
+# site_deets = site_deets[1:31,]
+# site_deets = site_deets[32:62,]
+site_deets = site_deets[substr(site_deets$site_code, 1, 2) != 'SE',]
+# site_deets = site_deets[substr(site_deets$site_code, 1, 2) == 'NC',]
+
+# run ####
+results = matrix('', ncol=4, nrow=nrow(site_deets))
+colnames(results) = c('Region', 'Site', 'Year', 'Result')#, 'Kmax', 'K_ER_cor')
+
+zq = read.csv('~/git/streampulse/model/ZQ_data.csv')
+offsets = read.csv('~/git/streampulse/model/sensor_offsets.csv')
+
+for(i in 1:nrow(site_deets)){
+
+    site_code = site_deets$site_code[i]
+    token = site_deets$tok[i]
+    start_date = site_deets$start_date[i]
+    end_date = site_deets$end_date[i]
+    int = site_deets$int[i]
+
+    # #establish K600_lnQ_nodes_meanlog prior
+    # av_veloc = site_deets$velocity_ms[i]
+    # av_slope = site_deets$slope_prop[i]
+    # av_depth = site_deets$depth_m[i]
+    # av_disch = site_deets$discharge_m3s[i]
+    # logK = log(5.62) + 0.504*log(av_veloc * av_slope) -
+    #     0.575*log(av_depth) - 0.0892*log(av_disch)
+
+    results[i,1] = strsplit(site_code, '_')[[1]][1]
+    results[i,2] = strsplit(site_code, '_')[[1]][2]
+    results[i,3] = substr(start_date, 1, 4)
+
+    #request
+    streampulse_data = try(request_data(sitecode=site_code,startdate=start_date,
+        enddate=end_date, token=token))
+
+    if(class(streampulse_data) == 'try-error'){
+        results[i,4] = 'request error'
+        next
+    }
+
+    if(site_code %in% c('NC_UEno','NC_Stony','NC_NHC','NC_Mud','NC_UNHC')){
+
+        #use rating curve data
+        site = strsplit(site_code, '_')[[1]][2]
+        Z = zq[zq$site == site, 'level_m']
+        Q = zq[zq$site == site, 'discharge_cms']
+        offset = offsets[offsets$site == site, 2] / 100
+
+        fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
+            model='streamMetabolizer', interval=int,
+            zq_curve=list(sensor_height=offset, Z=Z, Q=Q, fit='power',
+                ignore_oob_Z=TRUE, plot=TRUE), estimate_areal_depth=FALSE,
+            estimate_PAR=TRUE, retrieve_air_pres=TRUE))
+
+    } else {
+
+        fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
+            model='streamMetabolizer', interval=int,
+            estimate_areal_depth=FALSE, estimate_PAR=TRUE,
+            retrieve_air_pres=TRUE))
+    }
+
+    if(class(fitdata) == 'try-error'){
+        results[i,4] = 'prep error'
+        next
+    }
+
+    #remove storm days
+    df = fitdata$data
+    df$Date = as.Date(df$solar.time)
+    df_list = split(df, df$Date)
+    df_diff = ldply(lapply(df_list,
+        function(x){
+            range_diff = max(x$discharge) - min(x$discharge)
+            return(range_diff)
+        }), data.frame)
+    colnames(df_diff) = c("Date", "Diff")
+    df_diff = df_diff[which(df_diff$Diff <
+            (0.1 * median(df$discharge, na.rm=TRUE))),]
+    df = df[which(as.character(df$Date) %in% df_diff$Date),]
+
+    #exclude low DO observations, NA rows, impossible water temperatures
+    df = df[which(df$DO.obs > 2),]
+    df = na.omit(df)
+    fitdata$data$temp.water[fitdata$data$temp.water > 40] = NA
+    df$Date = NULL
+
+    #set specs
+    bayes_name_new = mm_name(type='bayes', pool_K600="binned", err_obs_iid=TRUE,
+        err_proc_iid = TRUE, ode_method = "trapezoid", deficit_src='DO_mod',
+        engine='stan')
+    bayes_specs_new = specs(bayes_name_new)
+
+    n_KQ_nodes = 7
+    Q_by_day = tapply(log(df$discharge), substr(df$solar.time, 1, 10), mean)
+    bayes_specs_new$K600_lnQ_nodes_centers = seq(from=min(Q_by_day, na.rm=TRUE),
+        to=max(Q_by_day, na.rm=TRUE), length.out=n_KQ_nodes)
+
+    #fit
+    fit_err = FALSE
+    tryCatch({
+            dat_metab = metab(bayes_specs_new, data=site_code)
+            dat_fit = get_fit(dat_metab)
+        }, error=function(e) {fit_err <<- TRUE})
+    if(fit_err){
+        results[i,4] = 'fit error'
+        next
+    }
+
+    #save deets
+    dirs = list.dirs('sp20190717', recursive=FALSE)
+    write_dir = paste('sp20190717', site_code, sep='/')
+    if(! site_code %in% dirs){
+        dir.create(write_dir)
+    }
+    # write_dir = paste('sp20190717', site_code, substr(end_date, 1, 4), sep='/')
+
+    fn_prefix = paste0(write_dir, '/', site_code, '_', start_date, '_',
+        end_date, '_')
+    specs_out = data.frame(unlist(get_specs(dat_metab)))
+    write.csv(specs_out, paste0(fn_prefix, 'specs.csv'))
+    daily_out = get_data_daily(dat_metab)
+    write.csv(daily_out, paste0(fn_prefix, 'datadaily.csv'), row.names=FALSE)
+    data_out = get_data(dat_metab)
+    write.csv(data_out, paste0(fn_prefix, 'mod_and_obs_DO.csv'), row.names=FALSE)
+
+    results[i,4] = 'Run Finished'
+
+}
