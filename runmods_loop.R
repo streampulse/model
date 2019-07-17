@@ -39,6 +39,7 @@ colnames(results) = c('Region', 'Site', 'Year', 'Result')#, 'Kmax', 'K_ER_cor')
 zq = read.csv('~/git/streampulse/model/ZQ_data.csv')
 offsets = read.csv('~/git/streampulse/model/sensor_offsets.csv')
 
+#KEEP SITE DEETS THE SAME AND RUN 2:4
 for(i in 1:nrow(site_deets)){
 
     site_code = site_deets$site_code[i]
@@ -61,8 +62,16 @@ for(i in 1:nrow(site_deets)){
     results[i,3] = substr(start_date, 1, 4)
 
     #request
-    streampulse_data = try(request_data(sitecode=site_code,startdate=start_date,
-                                    enddate=end_date, token=token))
+
+    if(site_code == 'NC_ColeMill'){
+        streampulse_data = try(request_data(sitecode=site_code,startdate=start_date,
+            enddate=end_date, token=token,
+            variables=c('DO_mgL','DOsat_pct','satDO_mgL','WaterPres_kPa',
+                'Depth_m','WaterTemp_C','Light_PAR','AirPres_kPa')))
+    } else {
+        streampulse_data = try(request_data(sitecode=site_code,startdate=start_date,
+                                        enddate=end_date, token=token))
+    }
 
     if(class(streampulse_data) == 'try-error'){
         results[i,4] = 'request error'
@@ -77,11 +86,19 @@ for(i in 1:nrow(site_deets)){
         Q = zq[zq$site == site, 'discharge_cms']
         offset = offsets[offsets$site == site, 2] / 100
 
-        fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
-            model='streamMetabolizer', interval=int,
-            zq_curve=list(sensor_height=offset, Z=Z, Q=Q, fit='power',
-                ignore_oob_Z=TRUE, plot=TRUE), estimate_areal_depth=FALSE,
-            estimate_PAR=TRUE, retrieve_air_pres=TRUE))
+        if(site_code == 'NC_Stony'){
+            fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
+                model='streamMetabolizer', interval=int,
+                zq_curve=list(sensor_height=offset, Z=Z, Q=Q, fit='power',
+                    ignore_oob_Z=TRUE, plot=TRUE), estimate_areal_depth=TRUE,
+                estimate_PAR=TRUE, retrieve_air_pres=TRUE))
+        } else {
+            fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
+                model='streamMetabolizer', interval=int,
+                zq_curve=list(sensor_height=offset, Z=Z, Q=Q, fit='power',
+                    ignore_oob_Z=TRUE, plot=TRUE), estimate_areal_depth=FALSE,
+                estimate_PAR=TRUE, retrieve_air_pres=TRUE))
+        }
     } else {
         fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
             model='streamMetabolizer', interval=int,
