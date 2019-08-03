@@ -14,6 +14,9 @@ setwd('~/Desktop/untracked')
 
 site_deets = read.csv('~/git/streampulse/model/site_deets.csv',
     stringsAsFactors=FALSE)
+run_id = 2
+run_set = 1:15 + 15 * (run_id - 1)
+site_deets = site_deets[run_set,]
 
 results = matrix('', ncol=4, nrow=nrow(site_deets))
 colnames(results) = c('Region', 'Site', 'Year', 'Result')#, 'Kmax', 'K_ER_cor')
@@ -28,6 +31,8 @@ for(i in 1:nrow(site_deets)){
     start_date = site_deets$start_date[i]
     end_date = site_deets$end_date[i]
     int = site_deets$int[i]
+    write(paste(i, site_code, substr(start_date, 1, 4), Sys.time()),
+        '~/Desktop/untracked/model_run_log.txt', append=TRUE)
 
     # #establish K600_lnQ_nodes_meanlog prior
     # av_veloc = site_deets$velocity_ms[i]
@@ -161,7 +166,8 @@ for(i in 1:nrow(site_deets)){
 
 }
 
-write.csv(results, '~/Desktop/untracked/sp20190717/results.csv', row.names=FALSE)
+write.csv(results, row.names=FALSE,
+    file=paste0('~/Desktop/untracked/sp20190717/results', run_id, '.csv'))
 # #determine "high" DOsat amplitude by which to filter
 # z = model_fit
 # k_rhats = z$fit@fit$daily[,c('date','K600_daily_Rhat')]
