@@ -10,30 +10,18 @@ library(StreamPULSE)
 library(streamMetabolizer)
 library(plyr)
 
-#expects sm_figs and sm_out directories at this location
 setwd('~/Desktop/untracked')
 
-# choose sites and dates ####
-
-#filter ####
 site_deets = read.csv('~/git/streampulse/model/site_deets.csv',
     stringsAsFactors=FALSE)
 
-# site_deets$skip[15:nrow(site_deets)] = ''
-# site_deets = site_deets[site_deets$skip != 'x',]
-# site_deets = site_deets[1:31,]
-# site_deets = site_deets[32:62,]
-site_deets = site_deets[substr(site_deets$site_code, 1, 2) != 'SE',]
-# site_deets = site_deets[substr(site_deets$site_code, 1, 2) == 'NC',]
-
-# run ####
 results = matrix('', ncol=4, nrow=nrow(site_deets))
 colnames(results) = c('Region', 'Site', 'Year', 'Result')#, 'Kmax', 'K_ER_cor')
 
 zq = read.csv('~/git/streampulse/model/ZQ_data.csv')
 offsets = read.csv('~/git/streampulse/model/sensor_offsets.csv')
 
-for(i in 1:nrow(site_deets)){
+for(i in 44:nrow(site_deets)){
 
     site_code = site_deets$site_code[i]
     token = site_deets$tok[i]
@@ -54,8 +42,15 @@ for(i in 1:nrow(site_deets)){
     results[i,3] = substr(start_date, 1, 4)
 
     #request
-    streampulse_data = try(request_data(sitecode=site_code,startdate=start_date,
-        enddate=end_date, token=token))
+    if(site_code == 'NC_ColeMill'){
+        streampulse_data = try(request_data(sitecode=site_code,startdate=start_date,
+            enddate=end_date, token=token,
+            variables=c('DO_mgL','DOsat_pct','satDO_mgL','WaterPres_kPa',
+                'Depth_m','WaterTemp_C','Light_PAR','AirPres_kPa')))
+    } else {
+        streampulse_data = try(request_data(sitecode=site_code,startdate=start_date,
+            enddate=end_date, token=token))
+    }
 
     if(class(streampulse_data) == 'try-error'){
         results[i,4] = 'request error'
@@ -64,20 +59,26 @@ for(i in 1:nrow(site_deets)){
 
     if(site_code %in% c('NC_UEno','NC_Stony','NC_NHC','NC_Mud','NC_UNHC')){
 
-        #use rating curve data
+        #use rating curve data for some sites
         site = strsplit(site_code, '_')[[1]][2]
         Z = zq[zq$site == site, 'level_m']
         Q = zq[zq$site == site, 'discharge_cms']
         offset = offsets[offsets$site == site, 2] / 100
 
-        fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
-            model='streamMetabolizer', interval=int,
-            zq_curve=list(sensor_height=offset, Z=Z, Q=Q, fit='power',
-                ignore_oob_Z=TRUE, plot=TRUE), estimate_areal_depth=FALSE,
-            estimate_PAR=TRUE, retrieve_air_pres=TRUE))
-
+        if(site_code == 'NC_Stony'){
+            fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
+                model='streamMetabolizer', interval=int,
+                zq_curve=list(sensor_height=offset, Z=Z, Q=Q, fit='power',
+                    ignore_oob_Z=TRUE, plot=TRUE), estimate_areal_depth=TRUE,
+                estimate_PAR=TRUE, retrieve_air_pres=TRUE))
+        } else {
+            fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
+                model='streamMetabolizer', interval=int,
+                zq_curve=list(sensor_height=offset, Z=Z, Q=Q, fit='power',
+                    ignore_oob_Z=TRUE, plot=TRUE), estimate_areal_depth=FALSE,
+                estimate_PAR=TRUE, retrieve_air_pres=TRUE))
+        }
     } else {
-
         fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
             model='streamMetabolizer', interval=int,
             estimate_areal_depth=FALSE, estimate_PAR=TRUE,
@@ -109,6 +110,11 @@ for(i in 1:nrow(site_deets)){
     fitdata$data$temp.water[fitdata$data$temp.water > 40] = NA
     df$Date = NULL
 
+    if(! nrow(df)){
+        results[i,4] = 'no modelable days'
+        next
+    }
+
     #set specs
     bayes_name_new = mm_name(type='bayes', pool_K600="binned", err_obs_iid=TRUE,
         err_proc_iid = TRUE, ode_method = "trapezoid", deficit_src='DO_mod',
@@ -123,7 +129,7 @@ for(i in 1:nrow(site_deets)){
     #fit
     fit_err = FALSE
     tryCatch({
-            dat_metab = metab(bayes_specs_new, data=site_code)
+            dat_metab = metab(bayes_specs_new, data=df)
             dat_fit = get_fit(dat_metab)
         }, error=function(e) {fit_err <<- TRUE})
     if(fit_err){
@@ -151,3 +157,5 @@ for(i in 1:nrow(site_deets)){
     results[i,4] = 'Run Finished'
 
 }
+
+write.csv(results, '~/Desktop/untracked/sp20190717/results.csv', row.names=FALSE)
