@@ -21,7 +21,7 @@ colnames(results) = c('Region', 'Site', 'Year', 'Result')#, 'Kmax', 'K_ER_cor')
 zq = read.csv('~/git/streampulse/model/ZQ_data.csv')
 offsets = read.csv('~/git/streampulse/model/sensor_offsets.csv')
 
-for(i in 44:nrow(site_deets)){
+for(i in 1:nrow(site_deets)){
 
     site_code = site_deets$site_code[i]
     token = site_deets$tok[i]
@@ -147,6 +147,9 @@ for(i in 44:nrow(site_deets)){
 
     fn_prefix = paste0(write_dir, '/', site_code, '_', start_date, '_',
         end_date, '_')
+    write.csv(dat_fit$daily, paste0(fn_prefix, "daily.csv"), row.names=FALSE)
+    write.csv(dat_fit$overall, paste0(fn_prefix, "overall.csv"), row.names=FALSE)
+    write.csv(dat_fit$KQ_overall, paste0(fn_prefix, "KQ_overall.csv"), row.names=FALSE)
     specs_out = data.frame(unlist(get_specs(dat_metab)))
     write.csv(specs_out, paste0(fn_prefix, 'specs.csv'))
     daily_out = get_data_daily(dat_metab)
@@ -159,3 +162,14 @@ for(i in 44:nrow(site_deets)){
 }
 
 write.csv(results, '~/Desktop/untracked/sp20190717/results.csv', row.names=FALSE)
+# #determine "high" DOsat amplitude by which to filter
+# z = model_fit
+# k_rhats = z$fit@fit$daily[,c('date','K600_daily_Rhat')]
+# mo = get_data(z$fit)
+# k_rhats = k_rhats[k_rhats$K600_daily_Rhat <= 1.2,]
+# k_rhats = na.omit(k_rhats)
+# mo = mo[mo$date %in% k_rhats$date,]
+# rngs = tapply(mo$DO.sat, mo$date, range)
+# dosat = data.frame(matrix(unlist(rngs), ncol=2, byrow=TRUE,
+#     dimnames=list(NULL, c('min', 'max'))))
+# dosat$range = dosat$max - dosat$min
