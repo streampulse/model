@@ -34,7 +34,8 @@ zq = read.csv('/home/mike/Dropbox/streampulse/data/rating_curves/ZQ_data.csv')
 offsets = read.csv('/home/mike/Dropbox/streampulse/data/rating_curves/sensor_offsets.csv')
 site_deets = read.csv('~/git/streampulse/model/site_deets.csv',
     stringsAsFactors=FALSE)
-site_code='RI_CorkBrk'
+site_code='RI_CorkBrk'; start_date='2014-01-01'; end_date='2014-12-31'; token=NULL
+x = request_data(sitecode=site_code, startdate=start_date, enddate=end_date)
 site = strsplit(site_code, '_')[[1]][2]
 Z = zq[zq$site == site, 'level_m']
 Q = zq[zq$site == site, 'discharge_cms']
@@ -70,8 +71,9 @@ sp_data_prepped = prep_metabolism(d=sp_data, type='bayes',
 #debug gapfill
 df = sp_data_prepped$data #df=dd
 maxspan_days=5; knn=3;
-sint=interval; algorithm=fillgaps; maxhours=3
+algorithm=fillgaps; maxhours=3
 sint = difftime(as.POSIXct('2011-01-01 00:30:00'), as.POSIXct('2011-01-01 00:60:00'))
+sint = difftime(as.POSIXct('2011-01-01 00:30:00'), as.POSIXct('2011-01-01 00:15:00'))
 
 #debug series_impute (run this after running gap_fill stuff)
 wposix = which(sapply(df, function(x) base::inherits(x, "POSIXct")))

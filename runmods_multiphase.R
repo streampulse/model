@@ -14,6 +14,7 @@ setwd('~/Desktop/untracked')
 
 site_deets = read.csv('~/git/streampulse/model/site_deets.csv',
     stringsAsFactors=FALSE)
+site_deets = site_deets[substr(site_deets$site_code, 1, 2) == 'RI',]
 run_id = 2
 run_set = 1:15 + 15 * (run_id - 1)
 site_deets = site_deets[run_set,]
@@ -48,10 +49,15 @@ for(i in 1:nrow(site_deets)){
 
     #request
     if(site_code == 'NC_ColeMill'){
-        streampulse_data = try(request_data(sitecode=site_code,startdate=start_date,
+        streampulse_data = try(request_data(sitecode=site_code, startdate=start_date,
             enddate=end_date, token=token,
             variables=c('DO_mgL','DOsat_pct','satDO_mgL','WaterPres_kPa',
                 'Depth_m','WaterTemp_C','Light_PAR','AirPres_kPa')))
+    } else if(substr(site_code, 1, 2) == 'WI'){
+        streampulse_data = try(request_data(sitecode=site_code, startdate=start_date,
+            enddate=end_date, token=token,
+            variables=c('DO_mgL','DOsat_pct','satDO_mgL','WaterPres_kPa',
+                'Level_m','WaterTemp_C','Light_PAR','AirPres_kPa','Discharge_m3s')))
     } else {
         streampulse_data = try(request_data(sitecode=site_code,startdate=start_date,
             enddate=end_date, token=token))
@@ -83,6 +89,12 @@ for(i in 1:nrow(site_deets)){
                     ignore_oob_Z=TRUE, plot=TRUE), estimate_areal_depth=FALSE,
                 estimate_PAR=TRUE, retrieve_air_pres=TRUE))
         }
+    } else if(substr(site_code, 1, 2) == 'WI' &&
+            ! 'Level_m' %in% streampulse_data$data$variable){
+        fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
+            model='streamMetabolizer', interval=int,
+            estimate_areal_depth=TRUE, estimate_PAR=TRUE,
+            retrieve_air_pres=TRUE))
     } else {
         fitdata = try(prep_metabolism(d=streampulse_data, type='bayes',
             model='streamMetabolizer', interval=int,
