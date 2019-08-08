@@ -30,12 +30,17 @@ offsets = read.csv('~/git/streampulse/model/sensor_offsets.csv')
 good_days = read.csv('~/Downloads/SP_data_RhatK600_sub1.1.csv',
     stringsAsFactors=FALSE)
 
-for(i in 1:nrow(site_deets)){
+runs = unique(select(good_days, State_Site, Year))
+runs$State_Site = sub(' ', '_', runs$State_Site)
+rownames(runs) = 1:nrow(runs)
+runs = runs[1:11,]
 
-    site_code = site_deets$site_code[i]
-    token = site_deets$tok[i]
-    start_date = site_deets$start_date[i]
-    end_date = site_deets$end_date[i]
+for(i in 1:nrow(runs)){
+
+    site_code = runs$State_Site[i]
+    # token = site_deets$tok[i]
+    start_date = paste0(runs$Year[i], '-01-01')
+    end_date = paste0(runs$Year[i], '-12-31')
 
     df = filter(good_days, State_Site == sub('_', ' ', site_code),
             Year == as.numeric(substr(start_date, 1, 4))) %>%
