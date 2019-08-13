@@ -14,10 +14,10 @@ setwd('~/Desktop/untracked')
 
 site_deets = read.csv('~/git/streampulse/model/site_deets2.csv',
     stringsAsFactors=FALSE)
-site_deets = site_deets[1:4,]
+# site_deets = site_deets[1:4,]
 # site_deets = site_deets[5:8,]
 # site_deets = site_deets[9:12,]
-# site_deets = site_deets[13:15,]
+site_deets = site_deets[13:15,]
 # site_deets = site_deets[16:18,]
 # site_deets = site_deets[substr(site_deets$site_code, 1, 2) == 'RI',]
 # run_id = 2
@@ -129,10 +129,27 @@ for(i in 1:nrow(site_deets)){
     #exclude low DO observations, NA rows, impossible water temperatures
     df = df[which(df$DO.obs > 0),]
     df = na.omit(df)
-    fitdata$data$temp.water[fitdata$data$temp.water > 40] = NA
+    df$temp.water[df$temp.water > 40] = NA
     df$Date = NULL
 
-    if(! nrow(df)){
+    #replace NA values so there aren't missing rows
+    df = left_join(data.frame(solar.time=seq.POSIXt(df$solar.time[1],
+        df$solar.time[nrow(df)], int)), df)
+
+    #impute gaps again
+    imputed = df
+    int_num = as.numeric(sub(' min', '', int))
+    samples_per_day = (60 / int_num) * 24
+    maxhours = 3
+
+    for(i in 2:ncol(df)){
+        imputed[,i] = StreamPULSE:::series_impute(x=df[,i],
+            tol=samples_per_day * (maxhours / 24),
+            samp=samples_per_day, algorithm='interpolation',
+            variable_name=colnames(df)[i])
+    }
+
+    if(! nrow(imputed)){
         results[i,4] = 'no modelable days'
         next
     }
@@ -144,14 +161,15 @@ for(i in 1:nrow(site_deets)){
     bayes_specs_new = specs(bayes_name_new)
 
     n_KQ_nodes = 7
-    Q_by_day = tapply(log(df$discharge), substr(df$solar.time, 1, 10), mean)
+    Q_by_day = tapply(log(imputed$discharge),
+        substr(imputed$solar.time, 1, 10), mean)
     bayes_specs_new$K600_lnQ_nodes_centers = seq(from=min(Q_by_day, na.rm=TRUE),
         to=max(Q_by_day, na.rm=TRUE), length.out=n_KQ_nodes)
 
     #fit
     fit_err = FALSE
     tryCatch({
-            dat_metab = metab(bayes_specs_new, data=df)
+            dat_metab = metab(bayes_specs_new, data=imputed)
             dat_fit = get_fit(dat_metab)
         }, error=function(e) {fit_err <<- TRUE})
     if(fit_err){
