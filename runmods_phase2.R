@@ -17,9 +17,6 @@ outfolder = 'sp20190808'
 site_deets = read.csv('~/git/streampulse/model/site_deets.csv',
     stringsAsFactors=FALSE)
 # site_deets = site_deets[substr(site_deets$site_code, 1, 2) == 'RI',]
-run_id = 2
-run_set = 1:15 + 15 * (run_id - 1)
-site_deets = site_deets[run_set,]
 
 results = matrix('', ncol=4, nrow=nrow(site_deets))
 colnames(results) = c('Region', 'Site', 'Year', 'Result')#, 'Kmax', 'K_ER_cor')

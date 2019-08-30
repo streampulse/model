@@ -5,3 +5,4 @@
 *.tsv
 *.zip
 *.xml
+/5cores
