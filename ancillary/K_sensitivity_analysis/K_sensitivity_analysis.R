@@ -102,7 +102,6 @@ for(i in 1:nrow(site_deets)){
         bayes_specs_new = specs(bayes_name_new)
         bayes_specs_new$K600_daily_meanlog = exp(K)
         bayes_specs_new$K600_daily_sdlog = 0.001
-        bayes_specs_new$ = 0.001
 
         #fit
         fit_err = FALSE
