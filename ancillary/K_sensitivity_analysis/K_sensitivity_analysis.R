@@ -9,10 +9,12 @@ site_deets = read.csv('~/git/streampulse/model/site_deets.csv',
 site_deets = site_deets[substr(site_deets$site_code, 1, 2) == 'NC',]
 site_deets = site_deets[site_deets$start_date == '2017-01-01', ]
 site_deets = site_deets[! site_deets$site_code %in% c('NC_Stony', 'NC_ColeMill',
-    'NC_Eno', 'NC_NHC'),]
+    'NC_UEno', 'NC_UNHC'),]
 site_deets$end_date
-site_deets$start_date[site_deets$site_code %in% c('NC_Mud', 'NC_UEno')] = '2018-01-01'
-site_deets$end_date[site_deets$site_code %in% c('NC_Mud', 'NC_UEno')] = '2018-12-31'
+site_deets$start_date[site_deets$site_code %in% c('NC_NHC')] = '2017-01-01'
+site_deets$end_date[site_deets$site_code %in% c('NC_NHC')] = '2017-12-31'
+site_deets$start_date[site_deets$site_code %in% c('NC_Eno')] = '2016-01-01'
+site_deets$end_date[site_deets$site_code %in% c('NC_Eno')] = '2016-12-31'
 
 run_id = 1
 
