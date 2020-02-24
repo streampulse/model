@@ -107,7 +107,7 @@ for(i in 1:nrow(site_deets)){
             err_proc_iid = TRUE, ode_method = "trapezoid", deficit_src='DO_mod',
             engine='stan')
         bayes_specs_new = specs(bayes_name_new)
-        bayes_specs_new$K600_daily_meanlog = exp(K)
+        bayes_specs_new$K600_daily_meanlog = log(K)
         bayes_specs_new$K600_daily_sdlog = 0.001
 
         #fit

@@ -10,7 +10,7 @@
 # install.packages('ks')
 # install.packages('RColorBrewer')
 
-# library(StreamPULSE)
+library(StreamPULSE)
 library(streamMetabolizer)
 # library(ks)
 # library(RColorBrewer)
@@ -23,14 +23,12 @@ setwd('~/Desktop/untracked')
 # choose sites and dates ####
 
 #filter ####
-site_deets = read.csv('~/git/streampulse/model/site_deets.csv',
+site_deets = read.csv('~/git/streampulse/model/site_deets_postAZ.csv',
     stringsAsFactors=FALSE)
 
-# site_deets$skip[15:nrow(site_deets)] = ''
-site_deets = site_deets[site_deets$skip != 'x',]
-# site_deets = site_deets[1:31,]
-# site_deets = site_deets[32:62,]
-site_deets = site_deets[substr(site_deets$site_code, 1, 2) == 'NC',]
+# site_deets = site_deets[site_deets$skip != 'x',]
+site_deets = site_deets[site_deets$run_status == 'r',]
+# site_deets = site_deets[substr(site_deets$site_code, 1, 2) == 'NC',]
 
 # run ####
 results = matrix('', ncol=4, nrow=nrow(site_deets))
