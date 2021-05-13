@@ -10,7 +10,7 @@ S = site_deets$slope_prop
 D = site_deets$depth_m
 Q = site_deets$discharge_m3s
 
-#get min and max for all terms in raymond eqn 7
+#get min and max for all terms in raymond eqn 7 (from table 2)
 t1a = (V * S)^(0.86 + 0.016)
 t1b = (V * S)^(0.86 - 0.016)
 t2a = Q^(-0.14 + 0.012)
